@@ -201,7 +201,7 @@ print('Using quiz: %s' % (quiz['title']))
 # Reading questions
 print('Retrieving quiz questions...')
 questions = {}
-for list in api_request('/courses/%d/quizzes/%d/questions' %
+for list in api_request('/courses/%d/quizzes/%d/questions?per_page=100' %
                         (course_id, quiz_id)):
     for question in list:
         questions[question['id']] = question
