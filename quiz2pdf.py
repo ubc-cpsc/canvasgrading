@@ -204,7 +204,8 @@ questions = {}
 for list in api_request('/courses/%d/quizzes/%d/questions?per_page=100' %
                         (course_id, quiz_id)):
     for question in list:
-        questions[question['id']] = question
+        if len(sys.argv) <= 6 or str(question['id']) in sys.argv[6]:
+            questions[question['id']] = question
 
 print('Retrieving quiz submissions...')
 for response in api_request('/courses/%d/quizzes/%d/submissions?'
