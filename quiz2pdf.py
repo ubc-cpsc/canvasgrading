@@ -12,7 +12,7 @@ import weasyprint
 import zipfile
 
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
-DEBUG = 1
+DEBUG = False # If True, only 10 submissions are processed (useful for testing)
 
 def start_file(file_name):
     if path.exists(file_name):
@@ -47,9 +47,19 @@ def write_exam_file(htmlfile, questions, qs = None):
         for attempt in sub['submission_history']:
             if 'submission_data' in attempt:
                 num_attempts += 1
+                update_answer = False
                 if attempt['score'] > previous_score:
                     previous_score = attempt['score'];
-                    for answer in attempt['submission_data']:
+                    update_answer = True
+                for answer in attempt['submission_data']:
+                    question = questions[answer['question_id']]
+                    if question['question_type'] == 'essay_question':
+                        raw_file_name = '%s_ans_%d_%s_v%d.html' % \
+                                        (exam_name, answer['question_id'], acct, attempt['attempt'])
+                        raw_files.append(raw_file_name)
+                        with open(raw_file_name, 'w') as ans_file:
+                            ans_file.write(answer['text'])
+                    if update_answer:
                         answers[answer['question_id']] = answer
             
     htmlfile.write('''<div style="text-align: center;">
@@ -63,9 +73,10 @@ def write_exam_file(htmlfile, questions, qs = None):
         question = questions[question_id]
         question_name = question['question_name']
         question_text = question['question_text']
+        question_type = question['question_type']
         if (question_id in sub_questions):
             question_text = sub_questions[question_id]['question_text']
-        if question['question_type'] == 'text_only_question':
+        if question_type == 'text_only_question':
             htmlfile.write('''
             <div class=text_only_question
                  style="page-break-after: always;">\n%s
@@ -80,12 +91,11 @@ def write_exam_file(htmlfile, questions, qs = None):
         
         if question_id in answers:
             answer = answers[question_id]
-            
             answer_text = answer['text']
             points = answer['points']
             
         elif qs != None:
-            question['question_type'] = None # To avoid formatting of multiple-choice
+            question_type = None # To avoid formatting of multiple-choice
             answer_text = '''
             *** NO SUBMISSION ***<br/><br/>
             This typically means that this question is part of a question
@@ -94,8 +104,8 @@ def write_exam_file(htmlfile, questions, qs = None):
             this set).
             '''
 
-        if question['question_type'] == 'true_false_question' or \
-           question['question_type'] == 'multiple_choice_question':
+        if question_type == 'true_false_question' or \
+           question_type == 'multiple_choice_question':
             answer_text = ''
             for pa in question['answers']:
                 choice = ''
@@ -103,14 +113,14 @@ def write_exam_file(htmlfile, questions, qs = None):
                     choice = 'X'
                 answer_text += '(<span style="width: 1cm; height: 1cm; border: 2px black; ' + \
                     'display: inline-block; text-align: center;">&nbsp;%s&nbsp;</span>)&nbsp;&nbsp;%s<br />' % (choice, pa['text'])
-        elif question['question_type'] == 'essay_question':
-            if answer != None:
-                raw_file_name = '%s_ans_%d_%s.html' % (exam_name, question_id, acct)
-                raw_files.append(raw_file_name)
-                with open(raw_file_name, 'w') as ans_file:
-                    ans_file.write(answer_text)
+        #elif question_type == 'essay_question':
+            # if answer != None:
+            #     raw_file_name = '%s_ans_%d_%s.html' % (exam_name, question_id, acct)
+            #     raw_files.append(raw_file_name)
+            #     with open(raw_file_name, 'w') as ans_file:
+            #         ans_file.write(answer_text)
         #else:
-        #    raise ValueError('Unknown question type: %s' % question['question_type'])
+        #    raise ValueError('Unknown question type: %s' % question_type)
                         
         htmlfile.write('''<div style="page-break-after: always;"></div>
         <div class=question_container style="page-break-inside: avoid; position: absolute;">
@@ -141,12 +151,12 @@ def end_file(htmlfile):
     htmlfile.write('</body>\n</html>')
     htmlfile.close()
 
-def api_request(request):
+def api_request(request, stopAtFirst = False):
     retval = []
     response = requests.get(MAIN_URL + request, headers = token_header)
     while True:
         retval.append(response.json())
-        if DEBUG or 'current' not in response.links or \
+        if stopAtFirst or 'current' not in response.links or \
            'last' not in response.links or \
            response.links['current']['url'] == response.links['last']['url']:
             break
@@ -243,7 +253,7 @@ print('Retrieving quiz submissions...')
 for response in api_request('/courses/%d/quizzes/%d/submissions?'
                             'include[]=user&include[]=submission&'
                             'include[]=submission_history'
-                            % (course_id, quiz_id)):
+                            % (course_id, quiz_id), DEBUG):
     quiz_submissions += response['quiz_submissions']
     for student in response['users']:
         students[student['id']] = student
