@@ -53,13 +53,25 @@ def write_exam_file(htmlfile, questions, qs = None):
                     update_answer = True
                 for answer in attempt['submission_data']:
                     question = questions[answer['question_id']]
+
                     if question['question_type'] == 'essay_question':
                         raw_file_name = 'answer_%d_%s_v%d.html' % \
                                         (answer['question_id'], acct, attempt['attempt'])
                         rawanswers_file.writestr(raw_file_name, answer['text'])
+                    elif question['question_type'] == 'file_upload_question':
+                        answer['text'] = 'See file(s): <ul>'
+                        for attach in answer['attachment_ids']:
+                            for file in api_request('/files/%s' % attach):
+                                raw_file_name = 'answer_%d_%s_v%d_%s' % \
+                                                (answer['question_id'], acct, attempt['attempt'], file['display_name'])
+                                data = requests.get(file['url'])
+                                if data:
+                                    rawanswers_file.writestr(raw_file_name, data.content)
+                                    answer['text'] += '<li>%s</li>' % raw_file_name
+
                     if update_answer:
                         answers[answer['question_id']] = answer
-            
+
     htmlfile.write('''<div style="text-align: center;">
     CS Alias: <span style='display: inline-block'>
                 <div style="display: table-cell; vertical-align: middle;
@@ -89,7 +101,7 @@ def write_exam_file(htmlfile, questions, qs = None):
         
         if question_id in answers:
             answer = answers[question_id]
-            answer_text = answer['text']
+            answer_text = answer['text'] if 'text' in answer else ''
             points = answer['points']
         elif qs != None:
             question_type = None # To avoid formatting of multiple-choice
@@ -148,7 +160,7 @@ def write_exam_file(htmlfile, questions, qs = None):
             answer_text += '</table>'
         
         elif question_type == 'file_upload_question':
-            raise ValueError('File upload questions not currently supported.') # TODO
+            pass # This is handled in the processing of history above.
         elif question_type != None:
             raise ValueError('Invalid question type: "%s"' % question_type)
                         
