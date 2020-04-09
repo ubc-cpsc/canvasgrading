@@ -72,7 +72,7 @@ def write_exam_file(htmlfile, questions, qs = None):
         question_name = question['question_name']
         question_text = question['question_text']
         question_type = question['question_type']
-        if (question_id in sub_questions):
+        if question_id in sub_questions and question_type == 'calculated_question':
             question_text = sub_questions[question_id]['question_text']
         if question_type == 'text_only_question':
             htmlfile.write('''
@@ -91,7 +91,6 @@ def write_exam_file(htmlfile, questions, qs = None):
             answer = answers[question_id]
             answer_text = answer['text']
             points = answer['points']
-            
         elif qs != None:
             question_type = None # To avoid formatting of multiple-choice
             answer_text = '''
@@ -102,15 +101,56 @@ def write_exam_file(htmlfile, questions, qs = None):
             this set).
             '''
 
-        if question_type == 'true_false_question' or \
-           question_type == 'multiple_choice_question':
+        if question_type == 'calculated_question' or \
+             question_type == 'short_answer_question' or \
+             question_type == 'essay_question' or \
+             question_type == 'numerical_question':
+            pass # use answer exactly as provided
+        elif question_type == 'true_false_question' or \
+           question_type == 'multiple_choice_question' or \
+           question_type == 'multiple_answers_question':
             answer_text = ''
             for pa in question['answers']:
-                choice = ''
-                if answer != None and 'answer_id' in answer and pa['id'] == answer['answer_id']:
-                    choice = 'X'
+                if question_type == 'multiple_answers_question':
+                    key = 'answer_%s' % pa['id']
+                    choice = answer[key] if answer != None and key in answer else ''
+                    if choice == '0': choice = ''
+                else:
+                    choice = 'X' if answer != None and 'answer_id' in answer and pa['id'] == answer['answer_id'] else ''
                 answer_text += '(<span style="width: 1cm; height: 1cm; border: 2px black; ' + \
                     'display: inline-block; text-align: center;">&nbsp;%s&nbsp;</span>)&nbsp;&nbsp;%s<br />' % (choice, pa['text'])
+            
+        elif question_type == 'fill_in_multiple_blanks_question' or \
+             question_type == 'multiple_dropdowns_question':
+            answer_text = '<table>'
+            tokens = []
+            dd_answers = {}
+            for pa in question['answers']:
+                if pa['blank_id'] not in tokens: tokens.append(pa['blank_id'])
+                dd_answers[pa['id']] = pa['text']
+            for token in tokens:
+                key = 'answer_for_%s' % token
+                choice = answer[key] if answer != None and key in answer else ''
+                if choice != '' and question_type == 'multiple_dropdowns_question':
+                    choice = dd_answers[choice]
+                answer_text += '<tr><td style="text-align: right;">%s</td><td>=></td><td>%s</td></tr>' % (token, choice)
+            answer_text += '</table>'
+                
+        elif question_type == 'matching_question':
+            answer_text = '<table>'
+            matches = {}
+            for match in question['matches']:
+                matches['%d' % match['match_id']] = match['text']
+            for pa in question['answers']:
+                key = 'answer_%s' % pa['id']
+                choice = matches[answer[key]] if answer != None and key in answer and answer[key] in matches else ''
+                answer_text += '<tr><td style="text-align: right;">%s</td><td>=></td><td>%s</td></tr>' % (pa['text'], choice)
+            answer_text += '</table>'
+        
+        elif question_type == 'file_upload_question':
+            raise ValueError('File upload questions not currently supported.') # TODO
+        elif question_type != None:
+            raise ValueError('Invalid question type: "%s"' % question_type)
                         
         htmlfile.write('''<div style="page-break-after: always;"></div>
         <div class=question_container style="page-break-inside: avoid; position: absolute;">
