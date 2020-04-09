@@ -54,11 +54,9 @@ def write_exam_file(htmlfile, questions, qs = None):
                 for answer in attempt['submission_data']:
                     question = questions[answer['question_id']]
                     if question['question_type'] == 'essay_question':
-                        raw_file_name = '%s_ans_%d_%s_v%d.html' % \
-                                        (exam_name, answer['question_id'], acct, attempt['attempt'])
-                        raw_files.append(raw_file_name)
-                        with open(raw_file_name, 'w') as ans_file:
-                            ans_file.write(answer['text'])
+                        raw_file_name = 'answer_%d_%s_v%d.html' % \
+                                        (answer['question_id'], acct, attempt['attempt'])
+                        rawanswers_file.writestr(raw_file_name, answer['text'])
                     if update_answer:
                         answers[answer['question_id']] = answer
             
@@ -113,14 +111,6 @@ def write_exam_file(htmlfile, questions, qs = None):
                     choice = 'X'
                 answer_text += '(<span style="width: 1cm; height: 1cm; border: 2px black; ' + \
                     'display: inline-block; text-align: center;">&nbsp;%s&nbsp;</span>)&nbsp;&nbsp;%s<br />' % (choice, pa['text'])
-        #elif question_type == 'essay_question':
-            # if answer != None:
-            #     raw_file_name = '%s_ans_%d_%s.html' % (exam_name, question_id, acct)
-            #     raw_files.append(raw_file_name)
-            #     with open(raw_file_name, 'w') as ans_file:
-            #         ans_file.write(answer_text)
-        #else:
-        #    raise ValueError('Unknown question type: %s' % question_type)
                         
         htmlfile.write('''<div style="page-break-after: always;"></div>
         <div class=question_container style="page-break-inside: avoid; position: absolute;">
@@ -176,7 +166,6 @@ submissions = {}
 quiz_submissions = []
 questions = {}
 htmlfile_list = []
-raw_files = []
 
 print('Reading classlist...')
 
@@ -265,6 +254,7 @@ print('Generating HTML files...')
 file_no = 1;
 template_file = start_file(exam_name + '_template.html')
 exams_file    = start_file(exam_name + '_exams_%d.html' % file_no)
+rawanswers_file = zipfile.ZipFile(exam_name + '_raw_answers.zip', 'w')
 
 write_exam_file(template_file, questions)
 
@@ -281,6 +271,7 @@ for qs in quiz_submissions:
 
 end_file(template_file)
 end_file(exams_file)
+rawanswers_file.close()
 
 print('\nConverting to PDF...')
 
@@ -288,16 +279,6 @@ for file in htmlfile_list:
     print(file + '...', end='\r');
     weasyprint.HTML(filename=file).write_pdf(file + '.pdf')
 
-print('\nSaving raw answers file...')
-num_files = 0
-with zipfile.ZipFile(exam_name + '_raw_answers.zip', 'w') as zip:
-    for file in raw_files:
-        print("Processed %d files out of %d..." %
-              (num_files + 1, len(raw_files)), end='\r');
-        num_files += 1
-        zip.write(file)
-        os.remove(file)
-    
 print('\nDONE. Created files:')
 for file in htmlfile_list:
     print('- ' + file + '.pdf')
