@@ -12,6 +12,7 @@ import weasyprint
 import zipfile
 
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
+DEBUG = 1
 
 def start_file(file_name):
     if path.exists(file_name):
@@ -29,6 +30,7 @@ def write_exam_file(htmlfile, questions, qs = None):
     acct = ''
     answers = {}
     sub_questions = {}
+    num_attempts = 0
     if qs != None:
         sub = submissions[qs['submission_id']]
         snum = sub['user']['sis_user_id']
@@ -43,13 +45,14 @@ def write_exam_file(htmlfile, questions, qs = None):
 
         previous_score = -1
         for attempt in sub['submission_history']:
-            if 'submission_data' in attempt and \
-               attempt['score'] > previous_score:
-                previous_score = attempt['score'];
-                for answer in attempt['submission_data']:
-                    answers[answer['question_id']] = answer
+            if 'submission_data' in attempt:
+                num_attempts += 1
+                if attempt['score'] > previous_score:
+                    previous_score = attempt['score'];
+                    for answer in attempt['submission_data']:
+                        answers[answer['question_id']] = answer
             
-    htmlfile.write('''<div style="text-align: center">
+    htmlfile.write('''<div style="text-align: center;">
     CS Alias: <span style='display: inline-block'>
                 <div style="display: table-cell; vertical-align: middle;
                      height: 1cm; width: 3cm; background: #7f7">%s</div></span>
@@ -109,7 +112,8 @@ def write_exam_file(htmlfile, questions, qs = None):
         #else:
         #    raise ValueError('Unknown question type: %s' % question['question_type'])
                         
-        htmlfile.write('''
+        htmlfile.write('''<div style="page-break-after: always;"></div>
+        <div class=question_container style="page-break-inside: avoid; position: absolute;">
         <h2>Question %d [%s]:</h2>
         <div class=question>
           %s
@@ -122,11 +126,14 @@ def write_exam_file(htmlfile, questions, qs = None):
             <td><div style="display: table-cell; width: 2cm; vertical-align: middle;
                  height: 1cm; background: yellow; text-align: center;">%s&nbsp;</div></td></tr>
         </table>
-        <h3>Answer:</h3>
-        <div class=answer style='page-break-after: always'>
+        <h3>Answer%s:</h3>
+        <div class=answer>
           %s
+        </div><hr/>
         </div>
-        ''' % (question_id, question_name, question_text, worth, points, answer_text))
+        ''' % (question_id, question_name, question_text, worth, points,
+               '' if num_attempts <= 1 else ' (%d attempts)' % num_attempts,
+               answer_text))
         qn += 1
         
     
@@ -139,7 +146,7 @@ def api_request(request):
     response = requests.get(MAIN_URL + request, headers = token_header)
     while True:
         retval.append(response.json())
-        if 'current' not in response.links or \
+        if DEBUG or 'current' not in response.links or \
            'last' not in response.links or \
            response.links['current']['url'] == response.links['last']['url']:
             break
