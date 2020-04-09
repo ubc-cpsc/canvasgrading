@@ -50,8 +50,9 @@ def write_exam_file(htmlfile, questions, qs = None):
                     answers[answer['question_id']] = answer
             
     htmlfile.write('''<div style="text-align: center">
-    CS Alias: <div style="display: inline-block; 
-               height: 1cm; width: 3cm; background: #7f7">%s</div>
+    CS Alias: <span style='display: inline-block'>
+                <div style="display: table-cell; vertical-align: middle;
+                     height: 1cm; width: 3cm; background: #7f7">%s</div></span>
     </div>''' % acct)
     qn = 1
     wrap = textwrap.TextWrapper(width=100, replace_whitespace=False)
@@ -70,28 +71,18 @@ def write_exam_file(htmlfile, questions, qs = None):
             continue
 
         worth = question['points_possible']
+        answer = None
         answer_text = ''
         points = ''
+        
         if question_id in answers:
             answer = answers[question_id]
             
             answer_text = answer['text']
             points = answer['points']
-
-            if question['question_type'] == 'true_false_question' or \
-               question['question_type'] == 'multiple_choice_question':
-                for pa in question['answers']:
-                    if 'answer_id' in answer and pa['id'] == answer['answer_id']:
-                        answer_text = pa['text']
-            elif question['question_type'] == 'essay_question':
-                raw_file_name = '%s_ans_%d_%s.html' % (exam_name, question_id, acct)
-                raw_files.append(raw_file_name)
-                with open(raw_file_name, 'w') as ans_file:
-                    ans_file.write(answer_text)
-            #else:
-            #    raise ValueError('Unknown question type: %s' % question['question_type'])
             
         elif qs != None:
+            question['question_type'] = None # To avoid formatting of multiple-choice
             answer_text = '''
             *** NO SUBMISSION ***<br/><br/>
             This typically means that this question is part of a question
@@ -99,6 +90,24 @@ def write_exam_file(htmlfile, questions, qs = None):
             group (i.e., the student answered a different question in
             this set).
             '''
+
+        if question['question_type'] == 'true_false_question' or \
+           question['question_type'] == 'multiple_choice_question':
+            answer_text = ''
+            for pa in question['answers']:
+                choice = ''
+                if answer != None and 'answer_id' in answer and pa['id'] == answer['answer_id']:
+                    choice = 'X'
+                answer_text += '(<span style="width: 1cm; height: 1cm; border: 2px black; ' + \
+                    'display: inline-block; text-align: center;">&nbsp;%s&nbsp;</span>)&nbsp;&nbsp;%s<br />' % (choice, pa['text'])
+        elif question['question_type'] == 'essay_question':
+            if answer != None:
+                raw_file_name = '%s_ans_%d_%s.html' % (exam_name, question_id, acct)
+                raw_files.append(raw_file_name)
+                with open(raw_file_name, 'w') as ans_file:
+                    ans_file.write(answer_text)
+        #else:
+        #    raise ValueError('Unknown question type: %s' % question['question_type'])
                         
         htmlfile.write('''
         <h2>Question %d [%s]:</h2>
@@ -107,11 +116,11 @@ def write_exam_file(htmlfile, questions, qs = None):
         </div>
         <table>
           <tr><td>Points possible:</td>
-            <td><div style="display: inline-block; width: 2cm;
-                 height: 1cm; background: cyan">%s&nbsp;</div></td></tr>
+            <td><div style="display: table-cell; width: 2cm; vertical-align: middle;
+                 height: 1cm; background: cyan; text-align: center;">%s&nbsp;</div></td></tr>
           <tr><td>Canvas autograder points:</td>
-            <td><div style="display: inline-block; width: 2cm;
-                 height: 1cm; background: yellow">%s&nbsp;</div></td></tr>
+            <td><div style="display: table-cell; width: 2cm; vertical-align: middle;
+                 height: 1cm; background: yellow; text-align: center;">%s&nbsp;</div></td></tr>
         </table>
         <h3>Answer:</h3>
         <div class=answer style='page-break-after: always'>
@@ -272,7 +281,7 @@ with zipfile.ZipFile(exam_name + '_raw_answers.zip', 'w') as zip:
         zip.write(file)
         os.remove(file)
     
-print('DONE. Created files:')
+print('\nDONE. Created files:')
 for file in htmlfile_list:
     print('- ' + file + '.pdf')
 print('- ' + exam_name + '_raw_answers.zip')
