@@ -9,6 +9,7 @@ from os import path
 import json
 import requests
 import weasyprint
+import zipfile
 
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
 
@@ -56,6 +57,7 @@ def write_exam_file(htmlfile, questions, qs = None):
     wrap = textwrap.TextWrapper(width=100, replace_whitespace=False)
     for question_id in sorted(questions.keys()):
         question = questions[question_id]
+        question_name = question['question_name']
         question_text = question['question_text']
         if (question_id in sub_questions):
             question_text = sub_questions[question_id]['question_text']
@@ -79,14 +81,27 @@ def write_exam_file(htmlfile, questions, qs = None):
             if question['question_type'] == 'true_false_question' or \
                question['question_type'] == 'multiple_choice_question':
                 for pa in question['answers']:
-                    if pa['id'] == answer['answer_id']:
+                    if 'answer_id' in answer and pa['id'] == answer['answer_id']:
                         answer_text = pa['text']
+            elif question['question_type'] == 'essay_question':
+                raw_file_name = '%s_ans_%d_%s.html' % (exam_name, question_id, acct)
+                raw_files.append(raw_file_name)
+                with open(raw_file_name, 'w') as ans_file:
+                    ans_file.write(answer_text)
+            #else:
+            #    raise ValueError('Unknown question type: %s' % question['question_type'])
             
         elif qs != None:
-            answer_text = '*** STUDENT DID NOT SUBMIT AN ANSWER FOR THIS QUESTION ***'
+            answer_text = '''
+            *** NO SUBMISSION ***<br/><br/>
+            This typically means that this question is part of a question
+            group, and the student did not receive this question in the
+            group (i.e., the student answered a different question in
+            this set).
+            '''
                         
         htmlfile.write('''
-        <h2>Question %d:</h2>
+        <h2>Question %d [%s]:</h2>
         <div class=question>
           %s
         </div>
@@ -94,7 +109,7 @@ def write_exam_file(htmlfile, questions, qs = None):
           <tr><td>Points possible:</td>
             <td><div style="display: inline-block; width: 2cm;
                  height: 1cm; background: cyan">%s&nbsp;</div></td></tr>
-          <tr><td>Canvas automatically assigned points:</td>
+          <tr><td>Canvas autograder points:</td>
             <td><div style="display: inline-block; width: 2cm;
                  height: 1cm; background: yellow">%s&nbsp;</div></td></tr>
         </table>
@@ -102,7 +117,7 @@ def write_exam_file(htmlfile, questions, qs = None):
         <div class=answer style='page-break-after: always'>
           %s
         </div>
-        ''' % (question_id, question_text, worth, points, answer_text))
+        ''' % (question_id, question_name, question_text, worth, points, answer_text))
         qn += 1
         
     
@@ -135,6 +150,7 @@ submissions = {}
 quiz_submissions = []
 questions = {}
 htmlfile_list = []
+raw_files = []
 
 print('Reading classlist...')
 
@@ -243,8 +259,20 @@ end_file(exams_file)
 print('\nConverting to PDF...')
 
 for file in htmlfile_list:
+    print(file + '...', end='\r');
     weasyprint.HTML(filename=file).write_pdf(file + '.pdf')
 
+print('\nSaving raw answers file...')
+num_files = 0
+with zipfile.ZipFile(exam_name + '_raw_answers.zip', 'w') as zip:
+    for file in raw_files:
+        print("Processed %d files out of %d..." %
+              (num_files + 1, len(raw_files)), end='\r');
+        num_files += 1
+        zip.write(file)
+        os.remove(file)
+    
 print('DONE. Created files:')
 for file in htmlfile_list:
     print('- ' + file + '.pdf')
+print('- ' + exam_name + '_raw_answers.zip')
