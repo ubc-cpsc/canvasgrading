@@ -72,10 +72,13 @@ def write_exam_file(htmlfile, questions, qs = None):
                     if update_answer:
                         answers[answer['question_id']] = answer
 
-    htmlfile.write('''<div style="text-align: center;">
-    CS Alias: <span style='display: inline-block'>
-                <div style="display: table-cell; vertical-align: middle;
-                     height: 1cm; width: 3cm; background: #7f7">%s</div></span>
+    htmlfile.write('''<div style="text-align: center; margin: auto; font-size: xx-large;
+                                  page-break-after: always; height: 20cm; vertical-align: middle;">
+    CS Alias:<br/>
+    <span style="display: inline-block;">
+    <div style="display: table-cell; vertical-align: middle;
+                height: 3cm; width: 10cm; background: #7f7;
+                font-family: cursive; margin: auto;">%s</div></span>
     </div>''' % acct)
     qn = 1
     wrap = textwrap.TextWrapper(width=100, replace_whitespace=False)
