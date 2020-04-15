@@ -313,6 +313,15 @@ rawanswers_file = zipfile.ZipFile(exam_name + '_raw_answers.zip', 'w')
 
 write_exam_file(template_file, questions)
 
+if DEBUG:
+    with open('debug.json', 'w') as file:
+        data = {}
+        data['submissions'] = submissions
+        data['students'] = students
+        data['quiz_submissions'] = quiz_submissions
+        data['questions'] = questions
+        json.dump(data, file, indent=2)
+
 num_exams = 0
 for qs in quiz_submissions:
     print("Exporting student %d out of %d..." %
