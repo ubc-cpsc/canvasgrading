@@ -146,7 +146,7 @@ def write_exam_file(htmlfile, questions, qs = None):
             for token in tokens:
                 key = 'answer_for_%s' % token
                 choice = answer[key] if answer != None and key in answer else ''
-                if choice != '' and question_type == 'multiple_dropdowns_question':
+                if choice != '' and question_type == 'multiple_dropdowns_question' and choice in dd_answers:
                     choice = dd_answers[choice]
                 answer_text += '<tr><td style="text-align: right;">%s</td><td>=></td><td>%s</td></tr>' % (token, choice)
             answer_text += '</table>'
