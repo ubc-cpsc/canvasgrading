@@ -35,6 +35,11 @@ be obtained by running this script with all questions (without this
 argument), the number provided before the text of each question is the
 question ID.
 
+The script requires the use of the `weasyprint` Python library, which
+can be installed with:
+
+    pip3 install --user weasyprint
+
 The script will connect to the Canvas API to get the latest responses
 from Canvas itself. The program will generate a file
 `XXX_template.html` and `XXX_template.html.pdf`, where `XXX` is the
