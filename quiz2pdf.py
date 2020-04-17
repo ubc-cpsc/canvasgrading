@@ -283,6 +283,9 @@ if quiz == None:
 
 quiz_id = quiz['id']
 print('Using quiz: %s' % (quiz['title']))
+if (quiz['quiz_type'] != 'assignment'):
+    print('This quiz is not a graded quiz.')
+    exit(0)
 
 # Reading questions
 print('Retrieving quiz questions...')
