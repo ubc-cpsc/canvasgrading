@@ -265,7 +265,7 @@ print('Using course: %s / %s' % (course['term']['name'],
 
 # Reading quiz list
 for list in api_request('/courses/%d/quizzes' % course_id):
-    quizzes += list
+    quizzes += [quiz for quiz in list if quiz['quiz_type'] == 'assignment']
 
 quiz = None
 if len(sys.argv) > 5:
@@ -283,9 +283,6 @@ if quiz == None:
 
 quiz_id = quiz['id']
 print('Using quiz: %s' % (quiz['title']))
-if (quiz['quiz_type'] != 'assignment'):
-    print('This quiz is not a graded quiz.')
-    exit(0)
 
 # Reading questions
 print('Retrieving quiz questions...')
@@ -344,7 +341,7 @@ rawanswers_file.close()
 print('\nConverting to PDF...')
 
 for file in htmlfile_list:
-    print(file + '...', end='\r');
+    print(file + '...  ', end='\r');
     weasyprint.HTML(filename=file).write_pdf(file + '.pdf')
 
 print('\nDONE. Created files:')
