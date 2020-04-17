@@ -170,21 +170,21 @@ def write_exam_file(htmlfile, questions, qs = None):
         htmlfile.write('''<div style="page-break-after: always;"></div>
         <div class=question_container style="page-break-inside: avoid; position: absolute;">
         <h2>Question %d [%s]:</h2>
-        <div class=question>
+        <div class=question style='font-size: x-small; max-height: 5cm; overflow: hidden; background: #ccc;'>
           %s
         </div>
         <table>
           <tr><td>Points possible:</td>
             <td><div style="display: table-cell; width: 2cm; vertical-align: middle;
-                 height: 1cm; background: cyan; text-align: center;">%s&nbsp;</div></td></tr>
-          <tr><td>Canvas autograder points:</td>
+                 height: 1cm; background: cyan; text-align: center;">%s&nbsp;</div></td>
+            <td>Canvas autograder points:</td>
             <td><div style="display: table-cell; width: 2cm; vertical-align: middle;
                  height: 1cm; background: yellow; text-align: center;">%s&nbsp;</div></td></tr>
         </table>
         <h3>Answer%s:</h3>
-        <div class=answer>
+        <div class=answer style='font-size: x-small; background: #eee;'>
           %s
-        </div><hr/>
+        </div>
         </div>
         ''' % (question_id, question_name, question_text, worth, points,
                '' if num_attempts <= 1 else ' (%d attempts)' % num_attempts,
@@ -316,6 +316,7 @@ write_exam_file(template_file, questions)
 if DEBUG:
     with open('debug.json', 'w') as file:
         data = {}
+        data['quiz'] = quiz
         data['submissions'] = submissions
         data['students'] = students
         data['quiz_submissions'] = quiz_submissions
