@@ -53,11 +53,9 @@ def write_exam_file(htmlfile, questions, qs = None):
                 if attempt['score'] > previous_score:
                     previous_score = attempt['score']
                     previous_attempt = attempt['attempt']
-                    variation = ''
                     update_answer = True
                 elif attempt['score'] == previous_score and attempt['attempt'] > previous_attempt:
                     previous_attempt = attempt['attempt']
-                    variation = ''
                     update_answer = True
                 if attempt['attempt'] in variation.keys():
                     variation[attempt['attempt']] += 'x'
