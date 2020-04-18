@@ -49,25 +49,26 @@ def write_exam_file(htmlfile, questions, qs = None):
                 num_attempts += 1
                 update_answer = False
                 if attempt['score'] > previous_score:
-                    previous_score = attempt['score'];
+                    previous_score = attempt['score']
                     update_answer = True
                 for answer in attempt['submission_data']:
-                    question = questions[answer['question_id']]
-
-                    if question['question_type'] == 'essay_question':
-                        raw_file_name = 'answer_%d_%s_v%d.html' % \
-                                        (answer['question_id'], acct, attempt['attempt'])
-                        rawanswers_file.writestr(raw_file_name, answer['text'])
-                    elif question['question_type'] == 'file_upload_question':
-                        answer['text'] = 'See file(s): <ul>'
-                        for attach in answer['attachment_ids']:
-                            for file in api_request('/files/%s' % attach):
-                                raw_file_name = 'answer_%d_%s_v%d_%s' % \
-                                                (answer['question_id'], acct, attempt['attempt'], file['display_name'])
-                                data = requests.get(file['url'])
-                                if data:
-                                    rawanswers_file.writestr(raw_file_name, data.content)
-                                    answer['text'] += '<li>%s</li>' % raw_file_name
+                    question_id = answer['question_id']
+                    if question_included(question_id):
+                        question = questions[question_id]
+                        if question['question_type'] == 'essay_question':
+                            raw_file_name = 'answer_%d_%s_v%d.html' % \
+                                            (answer['question_id'], acct, attempt['attempt'])
+                            rawanswers_file.writestr(raw_file_name, answer['text'])
+                        elif question['question_type'] == 'file_upload_question':
+                            answer['text'] = 'See file(s): <ul>'
+                            for attach in answer['attachment_ids']:
+                                for file in api_request('/files/%s' % attach):
+                                    raw_file_name = 'answer_%d_%s_v%d_%s' % \
+                                                    (answer['question_id'], acct, attempt['attempt'], file['display_name'])
+                                    data = requests.get(file['url'])
+                                    if data:
+                                        rawanswers_file.writestr(raw_file_name, data.content)
+                                        answer['text'] += '<li>%s</li>' % raw_file_name
 
                     if update_answer:
                         answers[answer['question_id']] = answer
@@ -208,6 +209,9 @@ def api_request(request, stopAtFirst = False):
         response = requests.get(response.links['next']['url'],
                                 headers = token_header)
     return retval
+
+def question_included(qid):
+    return len(sys.argv) <= 6 or str(qid) in sys.argv[6]
     
 exam_name       = sys.argv[1]
 classlist_csv   = sys.argv[2]
@@ -290,7 +294,7 @@ questions = {}
 for list in api_request('/courses/%d/quizzes/%d/questions?per_page=100' %
                         (course_id, quiz_id)):
     for question in list:
-        if len(sys.argv) <= 6 or str(question['id']) in sys.argv[6]:
+        if question_included(question['id']):
             questions[question['id']] = question
 
 print('Retrieving quiz submissions...')
