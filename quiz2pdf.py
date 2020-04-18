@@ -44,27 +44,39 @@ def write_exam_file(htmlfile, questions, qs = None):
                 sub_questions[q['id']] = q
 
         previous_score = -1
+        previous_attempt = -1
+        variation = {}
         for attempt in sub['submission_history']:
             if 'submission_data' in attempt:
                 num_attempts += 1
                 update_answer = False
                 if attempt['score'] > previous_score:
                     previous_score = attempt['score']
+                    previous_attempt = attempt['attempt']
+                    variation = ''
                     update_answer = True
+                elif attempt['score'] == previous_score and attempt['attempt'] > previous_attempt:
+                    previous_attempt = attempt['attempt']
+                    variation = ''
+                    update_answer = True
+                if attempt['attempt'] in variation.keys():
+                    variation[attempt['attempt']] += 'x'
+                else:
+                    variation[attempt['attempt']] = ''
                 for answer in attempt['submission_data']:
                     question_id = answer['question_id']
                     if question_included(question_id):
                         question = questions[question_id]
                         if question['question_type'] == 'essay_question':
-                            raw_file_name = 'answer_%d_%s_v%d.html' % \
-                                            (answer['question_id'], acct, attempt['attempt'])
+                            raw_file_name = 'answer_%d_%s_v%d%s.html' % \
+                                            (answer['question_id'], acct, attempt['attempt'], variation[attempt['attempt']])
                             rawanswers_file.writestr(raw_file_name, answer['text'])
                         elif question['question_type'] == 'file_upload_question':
                             answer['text'] = 'See file(s): <ul>'
                             for attach in answer['attachment_ids']:
                                 for file in api_request('/files/%s' % attach):
-                                    raw_file_name = 'answer_%d_%s_v%d_%s' % \
-                                                    (answer['question_id'], acct, attempt['attempt'], file['display_name'])
+                                    raw_file_name = 'answer_%d_%s_v%d%s_%s' % \
+                                                    (answer['question_id'], acct, attempt['attempt'], variation[attempt['attempt']], file['display_name'])
                                     data = requests.get(file['url'])
                                     if data:
                                         rawanswers_file.writestr(raw_file_name, data.content)
