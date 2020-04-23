@@ -233,6 +233,7 @@ students = {}
 student_accounts = {}
 submissions = {}
 quiz_submissions = []
+question_groups = {}
 questions = {}
 htmlfile_list = []
 
@@ -306,6 +307,14 @@ for list in api_request('/courses/%d/quizzes/%d/questions?per_page=100' %
     for question in list:
         if question_included(question['id']):
             questions[question['id']] = question
+            if question['quiz_group_id'] != None:
+                if question['quiz_group_id'] not in question_groups:
+                    for group in api_request('/courses/%d/quizzes/%d/groups/%d' %
+                        (course_id, quiz_id, question['quiz_group_id'])):
+                        question_groups[group['id']] = group
+                if question['quiz_group_id'] in question_groups:
+                    group = question_groups[question['quiz_group_id']]
+                    question['points_possible'] = group['question_points']
 
 print('Retrieving quiz submissions...')
 for response in api_request('/courses/%d/quizzes/%d/submissions?'
@@ -331,10 +340,11 @@ if DEBUG:
     with open('debug.json', 'w') as file:
         data = {}
         data['quiz'] = quiz
-        data['submissions'] = submissions
-        data['students'] = students
-        data['quiz_submissions'] = quiz_submissions
+        data['groups'] = question_groups
         data['questions'] = questions
+        data['quiz_submissions'] = quiz_submissions
+        data['students'] = students
+        data['submissions'] = submissions
         json.dump(data, file, indent=2)
 
 num_exams = 0
