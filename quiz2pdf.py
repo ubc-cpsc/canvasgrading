@@ -93,8 +93,9 @@ def write_exam_file(htmlfile, questions, qs = None):
     </div>''' % acct)
     qn = 1
     wrap = textwrap.TextWrapper(width=100, replace_whitespace=False)
-    for question_id in sorted(questions.keys()):
-        question = questions[question_id]
+    for qt in sorted(questions.items(), key=lambda q: q[1]['question_name']):
+        question = qt[1]
+        question_id = qt[0]
         question_name = question['question_name']
         question_text = question['question_text']
         question_type = question['question_type']
@@ -207,10 +208,11 @@ def end_file(htmlfile):
     htmlfile.write('</body>\n</html>')
     htmlfile.close()
 
-def api_request(request, stopAtFirst = False):
+def api_request(request, stopAtFirst = False, debug = False):
     retval = []
     response = requests.get(MAIN_URL + request, headers = token_header)
     while True:
+        if (debug): print(response.text)
         retval.append(response.json())
         if stopAtFirst or 'current' not in response.links or \
            'last' not in response.links or \
@@ -305,6 +307,7 @@ questions = {}
 for list in api_request('/courses/%d/quizzes/%d/questions?per_page=100' %
                         (course_id, quiz_id)):
     for question in list:
+        #print(question['question_name'])
         if question_included(question['id']):
             questions[question['id']] = question
             if question['quiz_group_id'] != None:
