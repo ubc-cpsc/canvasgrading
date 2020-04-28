@@ -67,6 +67,8 @@ def process_submission(qs):
                                         (exam_name, question['quiz_group_id'])
                     if os.path.isfile(template_file):
                         zip.write(template_file, arcname=rubric_file)
+                    else:
+                        print('Missing rubric file for question %d (question group %d)' % (question_id, question['quiz_group_id']) )
 
 def api_request(request, stopAtFirst = False, debug = False):
     retval = []
