@@ -1,0 +1,145 @@
+.account-wrapper {
+    text-align: center;
+    margin: auto;
+    font-size: xx-large;
+    page-break-after: always;
+    height: 20cm;
+    vertical-align: middle;
+}
+
+.account-label {
+    display: block;
+}
+
+.account {
+    display: table-cell;
+    vertical-align: middle;
+    height: 3cm;
+    width: 10cm;
+    background: #7f7;
+    font-family: cursive;
+    margin: auto;
+}
+
+/* This class is used in text-only questions (explanations, diagrams,
+   preambles to other questions, etc.)
+ */
+.text-only-question {
+    page-break-after: always;
+}
+
+/* Question preamble is used before any question. It has no text, but
+   can be used to break pages in case of absolute positioning. */
+.question-preamble {
+    page-break-after: always;
+}
+
+/* Question container will contain both the question and the
+   answer. Absolute positioning is used to ensure the question will
+   never be broken into two pages in case of answers that are too
+   long. Additional CSS headers may be used for the class
+   question-XXX, where XXX is the question ID. */
+.question-container {
+    page-break-inside: avoid;
+    position: absolute;
+}
+
+/* Question title contains the question ID and name. */
+.question-title {
+}
+
+/* The question text itself. */
+.question {
+    font-size: x-small;
+    max-height: 5cm;
+    overflow: hidden;
+    background: #ccc;
+}
+
+/* Points possible and points assigned by Canvas. */
+.points-container {
+    text-align: center;
+}
+
+.points-possible::before {
+    content: "Points possible:";
+}
+
+.points-possible span, .points-canvas span {
+    display: table-cell;
+    width: 2cm;
+    vertical-align: middle;
+    height: 1cm;
+    text-align: center;
+}
+
+.points-possible span {
+    background: cyan;
+}
+
+.points-canvas::before {
+    content: "Canvas autograder points:";
+}
+
+.points-canvas span {
+    background: yellow;
+}
+
+/* Answer title, may contain number of attempts */
+.answer-title {
+}
+
+/* Student's answer itself */
+.answer {
+    font-size: x-small;
+    background: #eee;
+}
+
+/* The following classes are used in multiple choice, multiple answers
+   and true/false questions.
+ */
+.mc-item {
+    height: 1cm;
+}
+
+.mc-item-space span {
+    width: 1cm;
+    height: 1cm;
+    border: 2px black;
+    display: inline-block;
+    text-align: center;
+}
+
+.mc-item-space::before {
+    content: "(";
+}
+
+.mc-item-space::after {
+    content: ")";
+}
+
+.mc-item-text {
+}
+
+/* The following classes are used in fill-in multiple blanks, multiple
+   dropdowns and matching questions.
+ */
+.multiple-blanks-table {
+}
+
+.multiple-blanks-token {
+    text-align: right;
+}
+
+.multiple-blanks-answer {
+}
+
+/* The following classes are used to list files in file upload questions. */
+.file-upload {
+}
+
+/* Weasyprint doesn't support the border attribute on tables, this is
+   a workaround. */
+table[border], table[border] td, table[border] th {
+    border: 1px solid;
+}

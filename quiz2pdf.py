@@ -20,8 +20,8 @@ def start_file(file_name):
     htmlfile = open(file_name, 'w')
     htmlfile.write('''<!DOCTYPE html>
     <html>
-    <head></head>
-    <body>
+      <head></head>
+      <body>
     ''')
     htmlfile_list.append(file_name)
     return htmlfile
@@ -70,7 +70,7 @@ def write_exam_file(htmlfile, questions, qs = None):
                                             (answer['question_id'], acct, attempt['attempt'], variation[attempt['attempt']])
                             rawanswers_file.writestr(raw_file_name, answer['text'])
                         elif question['question_type'] == 'file_upload_question':
-                            answer['text'] = 'See file(s): <ul>'
+                            answer['text'] = '<div class="file-upload">See file(s): <ul>'
                             for attach in answer['attachment_ids']:
                                 for file in api_request('/files/%s' % attach):
                                     raw_file_name = 'answer_%d_%s_v%d%s_%s' % \
@@ -79,20 +79,16 @@ def write_exam_file(htmlfile, questions, qs = None):
                                     if data:
                                         rawanswers_file.writestr(raw_file_name, data.content)
                                         answer['text'] += '<li>%s</li>' % raw_file_name
+                            answer['text'] += '</ul></div>'
 
                     if update_answer:
                         answers[answer['question_id']] = answer
 
-    htmlfile.write('''<div style="text-align: center; margin: auto; font-size: xx-large;
-                                  page-break-after: always; height: 20cm; vertical-align: middle;">
-    CS Alias:<br/>
-    <span style="display: inline-block;">
-    <div style="display: table-cell; vertical-align: middle;
-                height: 3cm; width: 10cm; background: #7f7;
-                font-family: cursive; margin: auto;">%s</div></span>
+    htmlfile.write('''<div class='account-wrapper'>
+    <span class='account-label'>CS Alias:</span>
+    <span><span class='account'>%s</span></span>
     </div>''' % acct)
     qn = 1
-    wrap = textwrap.TextWrapper(width=100, replace_whitespace=False)
     for qt in sorted(questions.items(), key=lambda q: q[1]['question_name']):
         question = qt[1]
         question_id = qt[0]
@@ -103,10 +99,10 @@ def write_exam_file(htmlfile, questions, qs = None):
             question_text = sub_questions[question_id]['question_text']
         if question_type == 'text_only_question':
             htmlfile.write('''
-            <div class=text_only_question
-                 style="page-break-after: always;">\n%s
+            <div class='text-only-question'>
+              %s
             </div>
-            ''' % wrap.fill(question_text))
+            ''' % question_text)
             continue
 
         worth = question['points_possible']
@@ -144,12 +140,11 @@ def write_exam_file(htmlfile, questions, qs = None):
                     if choice == '0': choice = ''
                 else:
                     choice = 'X' if answer != None and 'answer_id' in answer and pa['id'] == answer['answer_id'] else ''
-                answer_text += '(<span style="width: 1cm; height: 1cm; border: 2px black; ' + \
-                    'display: inline-block; text-align: center;">&nbsp;%s&nbsp;</span>)&nbsp;&nbsp;%s<br />' % (choice, pa['text'])
+                answer_text += '<div class="mc-item"><span class="mc-item-space"><span>&nbsp;%s&nbsp;</span></span>&nbsp;&nbsp;<span class="mc-item-text">%s</span></div>' % (choice, pa['text'])
             
         elif question_type == 'fill_in_multiple_blanks_question' or \
              question_type == 'multiple_dropdowns_question':
-            answer_text = '<table>'
+            answer_text = '<table class="multiple-blanks-table">'
             tokens = []
             dd_answers = {}
             for pa in question['answers']:
@@ -160,45 +155,38 @@ def write_exam_file(htmlfile, questions, qs = None):
                 choice = answer[key] if answer != None and key in answer else ''
                 if choice != '' and question_type == 'multiple_dropdowns_question' and choice in dd_answers:
                     choice = dd_answers[choice]
-                answer_text += '<tr><td style="text-align: right;">%s</td><td>=></td><td>%s</td></tr>' % (token, choice)
+                answer_text += '<tr><td class="multiple-blanks-token">%s</td><td>=></td><td class=multiple-blanks-answer>%s</td></tr>' % (token, choice)
             answer_text += '</table>'
                 
         elif question_type == 'matching_question':
-            answer_text = '<table>'
+            answer_text = '<table class="multiple-blanks-table">'
             matches = {}
             for match in question['matches']:
                 matches['%d' % match['match_id']] = match['text']
             for pa in question['answers']:
                 key = 'answer_%s' % pa['id']
                 choice = matches[answer[key]] if answer != None and key in answer and answer[key] in matches else ''
-                answer_text += '<tr><td style="text-align: right;">%s</td><td>=></td><td>%s</td></tr>' % (pa['text'], choice)
+                answer_text += '<tr><td class="multiple-blanks-token">%s</td><td>=></td><td class="multiple-blanks-answer">%s</td></tr>' % (pa['text'], choice)
             answer_text += '</table>'
         
         elif question_type == 'file_upload_question':
             pass # This is handled in the processing of history above.
         elif question_type != None:
             raise ValueError('Invalid question type: "%s"' % question_type)
-                        
-        htmlfile.write('''<div style="page-break-after: always;"></div>
-        <div class=question_container style="page-break-inside: avoid; position: absolute;">
-        <h2>Question %d [%s]:</h2>
-        <div class=question style='font-size: x-small; max-height: 5cm; overflow: hidden; background: #ccc;'>
-          %s
+        
+        htmlfile.write('''<div class="question-preamble"></div>
+        <div class="question-container question-%d">
+        <h2 class="question-title">Question %d [%s]:</h2>
+        <div class=question>%s</div>
+        <div class=points-container>
+          <span class=points-possible><span>%s&nbsp;</span></span>
+          <span class=points-canvas><span>%s&nbsp;</span></span>
         </div>
-        <table>
-          <tr><td>Points possible:</td>
-            <td><div style="display: table-cell; width: 2cm; vertical-align: middle;
-                 height: 1cm; background: cyan; text-align: center;">%s&nbsp;</div></td>
-            <td>Canvas autograder points:</td>
-            <td><div style="display: table-cell; width: 2cm; vertical-align: middle;
-                 height: 1cm; background: yellow; text-align: center;">%s&nbsp;</div></td></tr>
-        </table>
-        <h3>Answer%s:</h3>
-        <div class=answer style='font-size: x-small; background: #eee;'>
-          %s
+        <h3 class=answer-title>Answer%s:</h3>
+        <div class=answer>%s</div>
         </div>
-        </div>
-        ''' % (question_id, question_name, question_text, worth, points,
+        ''' % (question_id, question_id, question_name,
+               question_text, worth, points,
                '' if num_attempts <= 1 else ' (%d attempts)' % num_attempts,
                answer_text))
         qn += 1
@@ -366,10 +354,11 @@ end_file(exams_file)
 rawanswers_file.close()
 
 print('\nConverting to PDF...')
+css = [weasyprint.CSS('canvasquiz.css')]
 
 for file in htmlfile_list:
     print(file + '...  ', end='\r');
-    weasyprint.HTML(filename=file).write_pdf(file + '.pdf')
+    weasyprint.HTML(filename=file).write_pdf(file + '.pdf', stylesheets=css)
 
 print('\nDONE. Created files:')
 for file in htmlfile_list:
