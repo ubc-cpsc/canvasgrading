@@ -233,7 +233,7 @@ group.add_argument("-f", "--canvas-token-file", type=argparse.FileType('r'),
                    help="File containing the Canvas token used for authentication")
 group.add_argument("-t", "--canvas-token",
                    help="Canvas token used for authentication")
-parser.add_argument("-p", "--output-prefix", required=True,
+parser.add_argument("-p", "--output-prefix",
                     help="Path/prefix for output files")
 parser.add_argument("-c", "--course", type=int, help="Course ID")
 parser.add_argument("-q", "--quiz", type=int, help="Quiz ID")
@@ -319,6 +319,10 @@ if quiz == None:
 
 quiz_id = quiz['id']
 print('Using quiz: %s' % (quiz['title']))
+
+if not args.output_prefix:
+    args.output_prefix = re.sub(r'[^A-Za-z0-9-_]+', '', quiz['title'])
+    print('Using prefix: %s' % args.output_prefix);
 
 # Reading questions
 print('Retrieving quiz questions...')

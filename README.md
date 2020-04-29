@@ -5,18 +5,20 @@
 This is a script that converts a Canvas quiz to a PDF suitable for
 Gradescope. It receives the following arguments:
 
-1. `-p PREFIX`: A string used as prefix for the output files. Can also
-be used to specify a different directory to store the data in (e.g.,
-`~/cs299/Final/FinalExam`).
-
-2. `-l CLASSLIST`: The name of a classlist CSV file containing at
+1. `-l CLASSLIST`: The name of a classlist CSV file containing at
 least the columns SNUM and ACCT. You can generate it on the department
 computers with a command like: `classlist <course_num> -T -f
 "%SN,%ACCT"`.
 
-3. `-t TOKEN` or `-f TOKENFILE`: A Canvas access token associated to
+2. `-t TOKEN` or `-f TOKENFILE`: A Canvas access token associated to
 your account (https://canvas.ubc.ca/profile/settings, see Approved
 Integrations), or a textfile containing the token.
+
+3. `-p PREFIX` (optional): A string used as prefix for the output
+files. Can also be used to specify a different directory to store the
+data in (e.g., `~/cs299/Final/FinalExam`). If not specified, a prefix
+is generated based on the quiz name, removing any non-alphanumeric
+characters (spaces, etc.).
 
 4. `-c COURSE` (optional): The ID of the course on Canvas. If you
 don't specify it, the script lists all courses you have access to and
