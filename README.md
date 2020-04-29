@@ -3,37 +3,47 @@
 ## quiz2pdf.py
 
 This is a script that converts a Canvas quiz to a PDF suitable for
-Gradescope. It receives 3-6 arguments, in this order:
+Gradescope. It receives the following arguments:
 
-1. A string used as prefix for the output files. Can also be used to
-specify a different directory to store the data in (e.g.,
+1. `-p PREFIX`: A string used as prefix for the output files. Can also
+be used to specify a different directory to store the data in (e.g.,
 `~/cs299/Final/FinalExam`).
 
-2. The name of a classlist CSV file containing at least the columns
-SNUM and ACCT. You can generate it on the department computers with a
-command like:
+2. `-l CLASSLIST`: The name of a classlist CSV file containing at
+least the columns SNUM and ACCT. You can generate it on the department
+computers with a command like: `classlist <course_num> -T -f
+"%SN,%ACCT"`.
 
-    classlist <course_num> -T -f "%SN,%ACCT"
+3. `-t TOKEN` or `-f TOKENFILE`: A Canvas access token associated to
+your account (https://canvas.ubc.ca/profile/settings, see Approved
+Integrations), or a textfile containing the token.
 
-3. A text file containing a Canvas access token associated to your
-account ([https://canvas.ubc.ca/profile/settings], see Approved
-Integrations).
+4. `-c COURSE` (optional): The ID of the course on Canvas. If you
+don't specify it, the script lists all courses you have access to and
+asks for a course. The ID can be obtained by looking at the URL on
+Canvas, it's the number after 'courses/'.
 
-4. (optional) The ID of the course on Canvas. If you don't specify it,
-the script lists all courses you have access to and asks for a
-course. The ID can be obtained by looking at the URL on Canvas, it's
-the number after 'courses/'.
+5. `-q QUIZ` (optional): The ID of the quiz to convert.  If you don't
+specify it, the script lists all quizzes from the course you selected
+and asks for a course. The ID can be obtained by looking at the URL on
+Canvas when you open the quiz, it's the number after 'quizzes/'.
 
-5. (optional) The ID of the quiz to convert.  If you don't specify it,
-the script lists all quizzes from the course you selected and asks for
-a course. The ID can be obtained by looking at the URL on Canvas when
-you open the quiz, it's the number after 'quizzes/'.
+6. `--only-question QID QID ...` (optional): A list of question IDs to
+include. If not specified, all questions are included. The ID of the
+question can be obtained by running this script with all questions
+(without this argument), the number provided before the text of each
+question is the question ID.
 
-6. (optional) A comma-separated list of question IDs to include. If
-not specified, all questions are included. The ID of the question can
-be obtained by running this script with all questions (without this
-argument), the number provided before the text of each question is the
-question ID.
+7. `--not-question QID QID ...` (optional): A list of question IDs to
+exclude. If not specified, all questions are included. The ID of the
+question can be obtained by running this script with all questions
+(without this argument), the number provided before the text of each
+question is the question ID.
+
+8. `-d`: Enter debug mode. In this mode, only the first 10 submissions
+are loaded from Canvas, and an extra `debug.json` file is
+generated. This can be used to test the configuration, style or the
+script itself.
 
 The script requires the use of the `weasyprint` Python library, which
 can be installed with:

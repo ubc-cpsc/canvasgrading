@@ -10,9 +10,9 @@ import json
 import requests
 import weasyprint
 import zipfile
+import argparse
 
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
-DEBUG = False # If True, only 10 submissions are processed (useful for testing)
 
 def start_file(file_name):
     if path.exists(file_name):
@@ -190,7 +190,13 @@ def write_exam_file(htmlfile, questions, qs = None):
                '' if num_attempts <= 1 else ' (%d attempts)' % num_attempts,
                answer_text))
         qn += 1
-        
+
+def flatten_list(l):
+    if isinstance(l, list):
+        for x in [x for x in l if isinstance(x, list)]:
+            l.remove(x)
+            l.extend(x)
+    return l
     
 def end_file(htmlfile):
     htmlfile.write('</body>\n</html>')
@@ -211,11 +217,42 @@ def api_request(request, stopAtFirst = False, debug = False):
     return retval
 
 def question_included(qid):
-    return len(sys.argv) <= 6 or str(qid) in sys.argv[6]
-    
-exam_name       = sys.argv[1]
-classlist_csv   = sys.argv[2]
-token_file_name = sys.argv[3] 
+    if args.not_question and qid in args.not_question:
+        return False
+    elif args.only_question:
+        return qid in args.only_question
+    else:
+        return True
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-l", "--classlist", required=True,
+                    type=str, #type=argparse.FileType('r', newline=''),
+                    help="CSV file containing student number and account")
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument("-f", "--canvas-token-file", type=argparse.FileType('r'),
+                   help="File containing the Canvas token used for authentication")
+group.add_argument("-t", "--canvas-token",
+                   help="Canvas token used for authentication")
+parser.add_argument("-p", "--output-prefix", required=True,
+                    help="Path/prefix for output files")
+parser.add_argument("-c", "--course", type=int, help="Course ID")
+parser.add_argument("-q", "--quiz", type=int, help="Quiz ID")
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--only-question", action='append', nargs='+', type=int,
+                   help="Questions to include")
+group.add_argument("--not-question", action='append', nargs='+', type=int,
+                   help="Questions to exclude")
+parser.add_argument("-d", "--debug", help="Enable debugging mode",
+                    action='store_true')
+args = parser.parse_args()
+
+flatten_list(args.only_question)
+flatten_list(args.not_question)
+
+if args.canvas_token_file:
+    args.canvas_token = args.canvas_token_file.read().strip()
+    args.canvas_token_file.close()
+token_header = {'Authorization': 'Bearer %s' % args.canvas_token}
 
 courses = []
 quizzes = []
@@ -229,8 +266,8 @@ htmlfile_list = []
 
 print('Reading classlist...')
 
-with open(classlist_csv, newline='') as csvfile:
-    reader = csv.DictReader(csvfile)
+with open(args.classlist, 'r', newline='') as file:
+    reader = csv.DictReader(file)
     if 'SNUM' not in reader.fieldnames:
         raise ValueError('Classlist CSV file does not contain student number.')
     if 'ACCT' not in reader.fieldnames:
@@ -240,20 +277,15 @@ with open(classlist_csv, newline='') as csvfile:
 
 print('Reading data from Canvas...')
 
-with open(token_file_name) as token_file:
-    token = token_file.read().strip()
-    token_header = {'Authorization': 'Bearer %s' % token}
-
 # Reading course list
 for list in api_request('/courses?include[]=term&state[]=available'):
     courses += list
 
 course = None
-if len(sys.argv) > 4:
-    for lcourse in courses:
-        if str(lcourse['id']) == sys.argv[4]:
-            course = lcourse
-            break
+if args.course:
+    for c in [c for c in courses if c['id'] == args.course]:
+        course = c
+        break
 
 if course == None:
     for index, course in enumerate(courses):
@@ -273,11 +305,10 @@ for list in api_request('/courses/%d/quizzes' % course_id):
     quizzes += [quiz for quiz in list if quiz['quiz_type'] == 'assignment']
 
 quiz = None
-if len(sys.argv) > 5:
-    for lquiz in quizzes:
-        if str(lquiz['id']) == sys.argv[5]:
-            quiz = lquiz
-            break
+if args.quiz:
+    for q in [q for q in quizzes if q['id'] == args.quiz]:
+        quiz = q
+        break
 
 if quiz == None:
     for index, quiz in enumerate(quizzes):
@@ -311,7 +342,7 @@ print('Retrieving quiz submissions...')
 for response in api_request('/courses/%d/quizzes/%d/submissions?'
                             'include[]=user&include[]=submission&'
                             'include[]=submission_history'
-                            % (course_id, quiz_id), DEBUG):
+                            % (course_id, quiz_id), args.debug):
     quiz_submissions += response['quiz_submissions']
     for student in response['users']:
         students[student['id']] = student
@@ -321,13 +352,13 @@ for response in api_request('/courses/%d/quizzes/%d/submissions?'
 print('Generating HTML files...')
 
 file_no = 1;
-template_file = start_file(exam_name + '_template.html')
-exams_file    = start_file(exam_name + '_exams_%d.html' % file_no)
-rawanswers_file = zipfile.ZipFile(exam_name + '_raw_answers.zip', 'w')
+template_file = start_file(args.output_prefix + '_template.html')
+exams_file    = start_file(args.output_prefix + '_exams_%d.html' % file_no)
+rawanswers_file = zipfile.ZipFile(args.output_prefix + '_raw_answers.zip', 'w')
 
 write_exam_file(template_file, questions)
 
-if DEBUG:
+if args.debug:
     with open('debug.json', 'w') as file:
         data = {}
         data['quiz'] = quiz
@@ -347,7 +378,7 @@ for qs in quiz_submissions:
     if num_exams % 20 == 0:
         end_file(exams_file)
         file_no += 1
-        exams_file = start_file(exam_name + '_exams_%d.html' % file_no)
+        exams_file = start_file(args.output_prefix + '_exams_%d.html' % file_no)
 
 end_file(template_file)
 end_file(exams_file)
@@ -363,4 +394,4 @@ for file in htmlfile_list:
 print('\nDONE. Created files:')
 for file in htmlfile_list:
     print('- ' + file + '.pdf')
-print('- ' + exam_name + '_raw_answers.zip')
+print('- ' + args.output_prefix + '_raw_answers.zip')
