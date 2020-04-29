@@ -1,9 +1,7 @@
 #! /usr/bin/python3
 
 import os
-import sys
 import csv
-import textwrap
 import re
 from os import path
 import json
@@ -239,9 +237,9 @@ parser.add_argument("-c", "--course", type=int, help="Course ID")
 parser.add_argument("-q", "--quiz", type=int, help="Quiz ID")
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--only-question", action='append', nargs='+', type=int,
-                   help="Questions to include")
+                   metavar="QUESTIONID", help="Questions to include")
 group.add_argument("--not-question", action='append', nargs='+', type=int,
-                   help="Questions to exclude")
+                   metavar="QUESTIONID", help="Questions to exclude")
 parser.add_argument("-d", "--debug", help="Enable debugging mode",
                     action='store_true')
 args = parser.parse_args()

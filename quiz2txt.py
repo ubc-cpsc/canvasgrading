@@ -1,18 +1,15 @@
 #! /usr/bin/python3
 
 import os
-import sys
 import csv
-import textwrap
 import re
 from os import path
 import json
 import requests
-import weasyprint
 import zipfile
+import argparse
 
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
-DEBUG = False # If True, only 10 submissions are processed (useful for testing)
 
 def process_submission(qs):
     answers = {}
@@ -42,7 +39,7 @@ def process_submission(qs):
                         continue
                     if question_id not in zipfiles:
                         zipfiles[question_id] = zipfile.ZipFile('%s_%s_%d.zip' % \
-                                                                (exam_name, question['question_name'], question_id), 'w')
+                                                                (args.output_prefix, question['question_name'], question_id), 'w')
                     zip = zipfiles[question_id]
                     common_substring = '%d_%s_v%d%s' % \
                                        (question_id, snum, attempt['attempt'], variation[attempt['attempt']])
@@ -61,15 +58,22 @@ def process_submission(qs):
                                 if data:
                                     zip.writestr(raw_file_name, data.content)
                     rubric_file = '%s_rubric.txt' % common_substring
-                    template_file = '%s_rubtempl_q%d.txt' % (exam_name, question_id)
+                    template_file = '%s_rubtempl_q%d.txt' % (args.output_prefix, question_id)
                     if not os.path.isfile(template_file) and question['quiz_group_id'] != None:
                         template_file = '%s_rubtempl_qg%d.txt' % \
-                                        (exam_name, question['quiz_group_id'])
+                                        (args.output_prefix, question['quiz_group_id'])
                     if os.path.isfile(template_file):
                         zip.write(template_file, arcname=rubric_file)
                     else:
-                        print('Missing rubric file for question %d (question group %d)' % (question_id, question['quiz_group_id']) )
+                        print('Missing rubric file for question %d (question group %s)' % (question_id, question['quiz_group_id']) )
 
+def flatten_list(l):
+    if isinstance(l, list):
+        for x in [x for x in l if isinstance(x, list)]:
+            l.remove(x)
+            l.extend(x)
+    return l
+    
 def api_request(request, stopAtFirst = False, debug = False):
     retval = []
     response = requests.get(MAIN_URL + request, headers = token_header)
@@ -85,10 +89,39 @@ def api_request(request, stopAtFirst = False, debug = False):
     return retval
 
 def question_included(qid):
-    return len(sys.argv) <= 5 or str(qid) in sys.argv[5]
-    
-exam_name       = sys.argv[1]
-token_file_name = sys.argv[2]
+    if args.not_question and qid in args.not_question:
+        return False
+    elif args.only_question:
+        return qid in args.only_question
+    else:
+        return True
+
+parser = argparse.ArgumentParser()
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument("-f", "--canvas-token-file", type=argparse.FileType('r'),
+                   help="File containing the Canvas token used for authentication")
+group.add_argument("-t", "--canvas-token",
+                   help="Canvas token used for authentication")
+parser.add_argument("-p", "--output-prefix",
+                    help="Path/prefix for output files")
+parser.add_argument("-c", "--course", type=int, help="Course ID")
+parser.add_argument("-q", "--quiz", type=int, help="Quiz ID")
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--only-question", action='append', nargs='+', type=int,
+                   metavar="QUESTIONID", help="Questions to include")
+group.add_argument("--not-question", action='append', nargs='+', type=int,
+                   metavar="QUESTIONID", help="Questions to exclude")
+parser.add_argument("-d", "--debug", help="Enable debugging mode",
+                    action='store_true')
+args = parser.parse_args()
+
+flatten_list(args.only_question)
+flatten_list(args.not_question)
+
+if args.canvas_token_file:
+    args.canvas_token = args.canvas_token_file.read().strip()
+    args.canvas_token_file.close()
+token_header = {'Authorization': 'Bearer %s' % args.canvas_token}
 
 courses = []
 quizzes = []
@@ -98,20 +131,15 @@ zipfiles = {}
 
 print('Reading data from Canvas...')
 
-with open(token_file_name) as token_file:
-    token = token_file.read().strip()
-    token_header = {'Authorization': 'Bearer %s' % token}
-
 # Reading course list
 for list in api_request('/courses?include[]=term&state[]=available'):
     courses += list
 
 course = None
-if len(sys.argv) > 3:
-    for lcourse in courses:
-        if str(lcourse['id']) == sys.argv[3]:
-            course = lcourse
-            break
+if args.course:
+    for c in [c for c in courses if c['id'] == args.course]:
+        course = c
+        break
 
 if course == None:
     for index, course in enumerate(courses):
@@ -131,11 +159,10 @@ for list in api_request('/courses/%d/quizzes' % course_id):
     quizzes += [quiz for quiz in list if quiz['quiz_type'] == 'assignment']
 
 quiz = None
-if len(sys.argv) > 4:
-    for lquiz in quizzes:
-        if str(lquiz['id']) == sys.argv[4]:
-            quiz = lquiz
-            break
+if args.quiz:
+    for q in [q for q in quizzes if q['id'] == args.quiz]:
+        quiz = q
+        break
 
 if quiz == None:
     for index, quiz in enumerate(quizzes):
@@ -146,11 +173,15 @@ if quiz == None:
 quiz_id = quiz['id']
 print('Using quiz: %s' % (quiz['title']))
 
+if not args.output_prefix:
+    args.output_prefix = re.sub(r'[^A-Za-z0-9-_]+', '', quiz['title'])
+    print('Using prefix: %s' % args.output_prefix);
+
 print('Retrieving quiz submissions...')
 for response in api_request('/courses/%d/quizzes/%d/submissions?'
                             'include[]=user&include[]=submission&'
                             'include[]=submission_history'
-                            % (course_id, quiz_id), DEBUG):
+                            % (course_id, quiz_id), args.debug):
     quiz_submissions += response['quiz_submissions']
     for submission in response['submissions']:
         submissions[submission['id']] = submission
@@ -158,7 +189,7 @@ for response in api_request('/courses/%d/quizzes/%d/submissions?'
 
 print('\nGenerating files...')
 
-if DEBUG:
+if args.debug:
     with open('debug.json', 'w') as file:
         data = {}
         data['quiz'] = quiz
