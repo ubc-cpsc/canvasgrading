@@ -240,8 +240,6 @@ flatten_list(args.not_question)
 if args.canvas_token_file:
     args.canvas_token = args.canvas_token_file.read().strip()
     args.canvas_token_file.close()
-token_header = {'Authorization': 'Bearer %s' % args.canvas_token}
-
 canvas = canvas.Canvas(args.canvas_token)
 
 student_accounts = {}
@@ -273,7 +271,6 @@ if course == None:
     course_index = int(input('Which course? '))
     course = courses[course_index]
 
-course_id = course['id']
 print('Using course: %s / %s' % (course['term']['name'],
                                  course['course_code']))
 
@@ -290,7 +287,6 @@ if quiz == None:
     quiz_index = int(input('Which quiz? '))
     quiz = quizzes[quiz_index]
 
-quiz_id = quiz['id']
 print('Using quiz: %s' % (quiz['title']))
 
 if not args.output_prefix:
