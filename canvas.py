@@ -22,6 +22,11 @@ class Canvas:
                                     headers = self.token_header)
         return retval
 
+    def put(self, url, data):
+        response = requests.put(MAIN_URL + url, json = data,
+                                headers = self.token_header)
+        response.raise_for_status()
+    
     def courses(self):
         courses = []
         for list in self.request('/courses?include[]=term&state[]=available'):
@@ -96,3 +101,14 @@ class Canvas:
         for file in self.request('/files/%s' % file_id):
             return file
 
+    def send_quiz_grade(self, course, quiz_submission,
+                        question_id, points, comments=None):
+        self.put('/courses/%d/quizzes/%d/submissions/%d'
+                 % (course['id'], quiz_submission['quiz_id'],
+                    quiz_submission['id']),
+                 {'quiz_submissions': [{
+                     'attempt': quiz_submission['attempt'],
+                     'questions': { question_id: {'score': points,
+                                                  'comment': comments}
+                     }
+                 }]})
