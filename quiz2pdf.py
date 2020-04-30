@@ -10,6 +10,8 @@ import weasyprint
 import zipfile
 import argparse
 
+import canvas
+
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
 
 def start_file(file_name):
@@ -24,6 +26,23 @@ def start_file(file_name):
     htmlfile_list.append(file_name)
     return htmlfile
 
+def save_raw_answer(answer, identification):
+    question = questions[answer['question_id']]
+    if question['question_type'] == 'essay_question':
+        raw_file_name = 'answer_%s.html' % identification
+        rawanswers_file.writestr(raw_file_name, answer['text'])
+    elif question['question_type'] == 'file_upload_question':
+        answer['text'] = '<div class="file-upload">See file(s): <ul>'
+        for file in [canvas.file(a) for a in answer['attachment_ids']]:
+            raw_file_name = 'answer_%s_%s' % \
+                            (identification, file['display_name'])
+            data = requests.get(file['url'])
+            if data:
+                rawanswers_file.writestr(raw_file_name, data.content)
+                answer['text'] += '<li>%s</li>' % raw_file_name
+        answer['text'] += '</ul></div>'
+
+
 def write_exam_file(htmlfile, questions, qs = None):
     acct = ''
     answers = {}
@@ -36,10 +55,8 @@ def write_exam_file(htmlfile, questions, qs = None):
             acct = student_accounts[snum]
         else:
             print('Account not found for student: %s' % snum)
-        # Get question listed to student
-        for r in api_request('/quiz_submissions/%d/questions' % qs['id']):
-            for q in r['quiz_submission_questions']:
-                sub_questions[q['id']] = q
+
+        sub_questions = canvas.submission_questions(qs)
 
         previous_score = -1
         previous_attempt = -1
@@ -52,7 +69,8 @@ def write_exam_file(htmlfile, questions, qs = None):
                     previous_score = attempt['score']
                     previous_attempt = attempt['attempt']
                     update_answer = True
-                elif attempt['score'] == previous_score and attempt['attempt'] > previous_attempt:
+                elif attempt['score'] == previous_score and \
+                     attempt['attempt'] > previous_attempt:
                     previous_attempt = attempt['attempt']
                     update_answer = True
                 if attempt['attempt'] in variation.keys():
@@ -60,27 +78,13 @@ def write_exam_file(htmlfile, questions, qs = None):
                 else:
                     variation[attempt['attempt']] = ''
                 for answer in attempt['submission_data']:
-                    question_id = answer['question_id']
-                    if question_included(question_id):
-                        question = questions[question_id]
-                        if question['question_type'] == 'essay_question':
-                            raw_file_name = 'answer_%d_%s_v%d%s.html' % \
-                                            (answer['question_id'], acct, attempt['attempt'], variation[attempt['attempt']])
-                            rawanswers_file.writestr(raw_file_name, answer['text'])
-                        elif question['question_type'] == 'file_upload_question':
-                            answer['text'] = '<div class="file-upload">See file(s): <ul>'
-                            for attach in answer['attachment_ids']:
-                                for file in api_request('/files/%s' % attach):
-                                    raw_file_name = 'answer_%d_%s_v%d%s_%s' % \
-                                                    (answer['question_id'], acct, attempt['attempt'], variation[attempt['attempt']], file['display_name'])
-                                    data = requests.get(file['url'])
-                                    if data:
-                                        rawanswers_file.writestr(raw_file_name, data.content)
-                                        answer['text'] += '<li>%s</li>' % raw_file_name
-                            answer['text'] += '</ul></div>'
-
-                    if update_answer:
-                        answers[answer['question_id']] = answer
+                    if question_included(answer['question_id']):
+                        save_raw_answer(answer, '%d_%s_v%d%s' % \
+                                        (answer['question_id'], acct,
+                                         attempt['attempt'],
+                                         variation[attempt['attempt']]))
+                        if update_answer:
+                            answers[answer['question_id']] = answer
 
     htmlfile.write('''<div class='account-wrapper'>
     <span class='account-label'>CS Alias:</span>
@@ -200,20 +204,6 @@ def end_file(htmlfile):
     htmlfile.write('</body>\n</html>')
     htmlfile.close()
 
-def api_request(request, stopAtFirst = False, debug = False):
-    retval = []
-    response = requests.get(MAIN_URL + request, headers = token_header)
-    while True:
-        if (debug): print(response.text)
-        retval.append(response.json())
-        if stopAtFirst or 'current' not in response.links or \
-           'last' not in response.links or \
-           response.links['current']['url'] == response.links['last']['url']:
-            break
-        response = requests.get(response.links['next']['url'],
-                                headers = token_header)
-    return retval
-
 def question_included(qid):
     if args.not_question and qid in args.not_question:
         return False
@@ -252,14 +242,9 @@ if args.canvas_token_file:
     args.canvas_token_file.close()
 token_header = {'Authorization': 'Bearer %s' % args.canvas_token}
 
-courses = []
-quizzes = []
-students = {}
+canvas = canvas.Canvas(args.canvas_token)
+
 student_accounts = {}
-submissions = {}
-quiz_submissions = []
-question_groups = {}
-questions = {}
 htmlfile_list = []
 
 print('Reading classlist...')
@@ -275,17 +260,11 @@ with open(args.classlist, 'r', newline='') as file:
 
 print('Reading data from Canvas...')
 
-# Reading course list
-for list in api_request('/courses?include[]=term&state[]=available'):
-    courses += list
-
 course = None
 if args.course:
-    for c in [c for c in courses if c['id'] == args.course]:
-        course = c
-        break
-
+    course = canvas.course(args.course)
 if course == None:
+    courses = canvas.courses()
     for index, course in enumerate(courses):
         print("%2d: %7d - %10s / %s" %
               (index, course['id'], course['term']['name'],
@@ -299,16 +278,12 @@ print('Using course: %s / %s' % (course['term']['name'],
                                  course['course_code']))
 
 # Reading quiz list
-for list in api_request('/courses/%d/quizzes' % course_id):
-    quizzes += [quiz for quiz in list if quiz['quiz_type'] == 'assignment']
-
 quiz = None
 if args.quiz:
-    for q in [q for q in quizzes if q['id'] == args.quiz]:
-        quiz = q
-        break
+    quiz = canvas.quiz(course, args.quiz)
 
 if quiz == None:
+    quizzes = canvas.quizzes(course)
     for index, quiz in enumerate(quizzes):
         print("%2d: %7d - %s" % (index, quiz['id'], quiz['title']))
         
@@ -324,32 +299,11 @@ if not args.output_prefix:
 
 # Reading questions
 print('Retrieving quiz questions...')
-questions = {}
-for list in api_request('/courses/%d/quizzes/%d/questions?per_page=100' %
-                        (course_id, quiz_id)):
-    for question in list:
-        #print(question['question_name'])
-        if question_included(question['id']):
-            questions[question['id']] = question
-            if question['quiz_group_id'] != None:
-                if question['quiz_group_id'] not in question_groups:
-                    for group in api_request('/courses/%d/quizzes/%d/groups/%d' %
-                        (course_id, quiz_id, question['quiz_group_id'])):
-                        question_groups[group['id']] = group
-                if question['quiz_group_id'] in question_groups:
-                    group = question_groups[question['quiz_group_id']]
-                    question['points_possible'] = group['question_points']
+questions = canvas.questions(course, quiz, question_included)
 
 print('Retrieving quiz submissions...')
-for response in api_request('/courses/%d/quizzes/%d/submissions?'
-                            'include[]=user&include[]=submission&'
-                            'include[]=submission_history'
-                            % (course_id, quiz_id), args.debug):
-    quiz_submissions += response['quiz_submissions']
-    for student in response['users']:
-        students[student['id']] = student
-    for submission in response['submissions']:
-        submissions[submission['id']] = submission
+(quiz_submissions, submissions) = canvas.submissions(course, quiz,
+                                                     debug=args.debug)
 
 print('Generating HTML files...')
 
@@ -364,10 +318,8 @@ if args.debug:
     with open('debug.json', 'w') as file:
         data = {}
         data['quiz'] = quiz
-        data['groups'] = question_groups
         data['questions'] = questions
         data['quiz_submissions'] = quiz_submissions
-        data['students'] = students
         data['submissions'] = submissions
         json.dump(data, file, indent=2)
 
