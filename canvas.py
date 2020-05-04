@@ -73,7 +73,7 @@ class Canvas:
 
     def submissions(self, course, quiz, include_user=True,
                     include_submission=True, include_history=True,
-                    debug=False):
+                    include_settings_only=False, debug=False):
         submissions = {}
         quiz_submissions = []
         include = ''
@@ -83,7 +83,9 @@ class Canvas:
         for response in self.request('/courses/%d/quizzes/%d/submissions?%s'
                                      % (course['id'], quiz['id'], include),
                                      debug):
-            quiz_submissions += response['quiz_submissions']
+            quiz_submissions += [qs for qs in response['quiz_submissions']
+                                 if include_settings_only or
+                                 qs['workflow_state'] != 'settings_only']
             if include_submission:
                 for submission in response['submissions']:
                     submissions[submission['id']] = submission
