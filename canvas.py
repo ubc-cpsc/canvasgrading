@@ -1,4 +1,5 @@
 import requests
+import json
 
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
 
@@ -26,7 +27,14 @@ class Canvas:
         response = requests.put(MAIN_URL + url, json = data,
                                 headers = self.token_header)
         response.raise_for_status()
-    
+        return response.json()
+
+    def post(self, url, data):
+        response = requests.post(MAIN_URL + url, json = data,
+                                 headers = self.token_header)
+        response.raise_for_status()
+        return response.json()
+
     def courses(self):
         courses = []
         for list in self.request('/courses?include[]=term&state[]=available'):
@@ -49,7 +57,7 @@ class Canvas:
         for quiz in self.request('/courses/%d/quizzes/%d' %
                                  (course['id'], quiz_id)):
             return quiz
-        return quizzes
+        return None
 
     def question_group(self, course, quiz, group_id):
         if group_id == None: return None
@@ -114,3 +122,57 @@ class Canvas:
                                                   'comment': comments}
                      }
                  }]})
+
+    def assignments(self, course):
+        assignments = []
+        for list in self.request('/courses/%d/assignments' % course['id']):
+            assignments += [a for a in list if
+                            'online_quiz' not in a['submission_types']]
+        return assignments
+        
+    def assignment(self, course, assignment_id):
+        for assignment in self.request('/courses/%d/assignments/%d' %
+                                 (course['id'], assignment_id)):
+            return assignment
+        return None
+
+    def students(self, course):
+        students = {}
+        for list in self.request('/courses/%d/users?enrollment_type=student_view' %
+                                 (course['id'])):
+            for s in list:
+                students[s['sis_user_id'] if s['sis_user_id'] else 0] = s
+        return students
+
+    def rubric(self, course, assignment):
+
+        for r in self.request('/courses/%d/rubrics/%d?include[]=associations' %
+                              (course['id'],
+                               assignment['rubric_settings']['id'])):
+            return r
+        return None
+
+    def rubrics(self, course):
+        full = []
+        for l in self.request('/courses/%d/rubrics?include[]=associations' %
+                              (course['id'])):
+            full += l
+        return full
+
+    def update_rubric(self, course, assignment, rubric):
+
+        data = {
+            'rubric': rubric,
+            'rubric_association': {
+                'association_id': assignment['id'],
+                'association_type': 'Assignment',
+                'use_for_grading': True,
+                'purpose': 'grading',
+            },
+        }
+        self.post('/courses/%d/rubrics' % course['id'], data)
+
+    def send_assig_grade(self, course, assignment, student, assessment):
+        self.put('/courses/%d/assignments/%d/submissions/%d' %
+                 (course['id'], assignment['id'], student['id']),
+                 { 'rubric_assessment': assessment })
