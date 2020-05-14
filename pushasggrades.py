@@ -79,6 +79,7 @@ if args.parts:
             print('WARNING: parts file does not contain descriptions.')
 
         criteria = {}
+        last = 0
         for (i, p) in enumerate(parts):
             criteria[i] = {
                 'id': p['Part'],
@@ -90,6 +91,13 @@ if args.parts:
                     'points': float(p['Weight']) * 100,
                 }}
             }
+            last = i
+        criteria[last+1] = {
+            'id': 'LATEPENALTY',
+            'description': 'Late Penalty',
+            'long_description': None,
+            'ratings': {0: {'points': 0}}
+        }
 
         canvas.update_rubric(course, assignment, {
             'title': assignment['name'],
@@ -98,20 +106,41 @@ if args.parts:
         })
 
 if args.marks:
+    assignment = canvas.assignment(course, assignment['id'])
+    
     with open(args.marks, 'r', newline='') as file:
         marks = csv.DictReader(file)
         i = 0
         for mark in marks:
             i += 1
             print('Pushing grade %d...' % i, end='\r');
-            student = students[int(mark['SID'])]
+            if mark['SID'] not in students:
+                print('\nIgnoring student %s, not on Canvas.' % mark['SID'])
+                continue
+            student = students[mark['SID']]
+            total = float(mark['TOTAL']) * 100
+            comments = ''
+            penaltypc = float(mark['PENALTY']) if 'PENALTY' in mark else 0.0
+            if 'INPROGRESS' in mark:
+                comments += '%s\n' % mark['INPROGRESS']
             assess = {}
+            totalcalc = 0
             for rub in assignment['rubric']:
-                assess[rub['id']] = {
-                    'points': float(mark[rub['id']]) * rub['points'],
-                    'comments': mark['Comments__' + rub['id']] \
-                    if 'Comments__' + rub['id'] in mark else None
-                }
+                rubpoints = float(mark[rub['id']]) * rub['points'] \
+                            if rub['id'] in mark else 0
+                rubcomments = mark['Comments__' + rub['id']] \
+                              if 'Comments__' + rub['id'] in mark else None
+                totalcalc += rubpoints
+                assess[rub['id']] = {'points': rubpoints,
+                                     'comments': rubcomments}
+            penalty = penaltypc * totalcalc / 100.0
+            # TODO Ensure total == totalcalc - penalty within a tolerance
+            assess['LATEPENALTY'] = {
+                'points': -penalty,
+                'comments': 'Late penalty: %1.1f%%\n' % penaltypc \
+                            if penalty > 0 else ''
+            }
+            # TODO General comments
             canvas.send_assig_grade(course, assignment, student, assess)
             
 print('\nDONE.')

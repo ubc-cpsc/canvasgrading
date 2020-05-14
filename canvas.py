@@ -138,10 +138,10 @@ class Canvas:
 
     def students(self, course):
         students = {}
-        for list in self.request('/courses/%d/users?enrollment_type=student_view' %
+        for list in self.request('/courses/%d/users?enrollment_type=student' %
                                  (course['id'])):
             for s in list:
-                students[s['sis_user_id'] if s['sis_user_id'] else 0] = s
+                students[s['sis_user_id'] if s['sis_user_id'] else '0'] = s
         return students
 
     def rubric(self, course, assignment):
