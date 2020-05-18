@@ -93,9 +93,9 @@ if args.parts:
             }
             last = i
         criteria[last+1] = {
-            'id': 'LATEPENALTY',
-            'description': 'Late Penalty',
-            'long_description': None,
+            'id': 'PENALTY',
+            'description': 'Penalties',
+            'long_description': 'Penalties, including late penalties.',
             'ratings': {0: {'points': 0}}
         }
 
@@ -121,6 +121,7 @@ if args.marks:
             total = float(mark['TOTAL']) * 100
             comments = ''
             penaltypc = float(mark['PENALTY']) if 'PENALTY' in mark else 0.0
+            penaltyreason = mark['PENALTYREASON'] if 'PENALTYREASON' in mark else ''
             if 'INPROGRESS' in mark:
                 comments += '%s\n' % mark['INPROGRESS']
             assess = {}
@@ -135,10 +136,9 @@ if args.marks:
                                      'comments': rubcomments}
             penalty = penaltypc * totalcalc / 100.0
             # TODO Ensure total == totalcalc - penalty within a tolerance
-            assess['LATEPENALTY'] = {
+            assess['PENALTY'] = {
                 'points': -penalty,
-                'comments': 'Late penalty: %1.1f%%\n' % penaltypc \
-                            if penalty > 0 else ''
+                'comments': penaltyreason
             }
             # TODO General comments
             canvas.send_assig_grade(course, assignment, student, assess)
