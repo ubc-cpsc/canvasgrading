@@ -59,6 +59,10 @@ class Canvas:
             return quiz
         return None
 
+    def update_quiz(self, course, quiz_id, quiz_data):
+        return self.put('/courses/%d/quizzes/%d' % (course['id'], quiz_id),
+                        { 'quiz': quiz_data } )
+
     def question_group(self, course, quiz, group_id):
         if group_id == None: return None
         for group in self.request('/courses/%d/quizzes/%d/groups/%d'
@@ -66,6 +70,17 @@ class Canvas:
             return group
         return None
 
+    # If group_id is None, creates a new one
+    def update_question_group(self, course, quiz, group_id, group_data):
+        if group_id:
+            return self.put('/courses/%d/quizzes/%d/groups/%d' %
+                            (course['id'], quiz['id'], group_id),
+                            { 'quiz_groups': [group_data] } )
+        else:
+            return self.post('/courses/%d/quizzes/%d/groups' %
+                             (course['id'], quiz['id']),
+                             { 'quiz_groups': [group_data] } )
+    
     def questions(self, course, quiz, filter=None):
         questions = {}
         for list in self.request('/courses/%d/quizzes/%d/questions?per_page=100' %
@@ -79,6 +94,16 @@ class Canvas:
                     questions[question['id']] = question
         return questions
 
+    def update_question(self, course, quiz, question_id, question_data):
+        if question_id:
+            return self.put('/courses/%d/quizzes/%d/questions/%d' %
+                            (course['id'], quiz['id'], question_id),
+                            { 'question': question_data } )
+        else:
+            return self.post('/courses/%d/quizzes/%d/questions' %
+                             (course['id'], quiz['id']),
+                             { 'question': question_data } )
+    
     def submissions(self, course, quiz, include_user=True,
                     include_submission=True, include_history=True,
                     include_settings_only=False, debug=False):
@@ -160,7 +185,6 @@ class Canvas:
         return full
 
     def update_rubric(self, course, assignment, rubric):
-
         data = {
             'rubric': rubric,
             'rubric_association': {
