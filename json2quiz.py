@@ -9,6 +9,7 @@ import requests
 import weasyprint
 import zipfile
 import argparse
+from collections import OrderedDict
 
 import canvas
 
@@ -64,7 +65,7 @@ else:
 
 if args.push_quiz:
     print('Reading JSON file...')
-    values_from_json = json.load(json_file)
+    values_from_json = json.load(json_file, object_pairs_hook=OrderedDict)
     if not args.quiz and 'quiz' in values_from_json and \
        'id' in values_from_json['quiz']:
         args.quiz = values_from_json['quiz']['id']
@@ -105,13 +106,12 @@ print('Using quiz: %s' % (quiz['title']))
 
 # Reading questions
 print('Retrieving current quiz questions...')
-questions = canvas.questions(course, quiz)
+questions = OrderedDict(sorted(canvas.questions(course, quiz, include_groups=True).items()))
 
 print('Retrieving current quiz question groups...')
-groups = {}
-for group_id in [q['quiz_group_id'] for q in questions.values()]:
-    if group_id:
-        groups[group_id] = canvas.question_group(course, quiz, group_id)
+groups = OrderedDict(sorted({g['id']: g for g in [
+    question['quiz_group_full'] for question in questions.values()
+    if 'quiz_group_full' in question] }.items()))
 
 if 'quiz' in values_from_json:
     print('Pushing updates to quiz...')
@@ -161,7 +161,7 @@ if args.load_quiz:
     json.dump({ 'quiz': quiz,
                 'groups': groups,
                 'questions': questions
-    }, json_file, indent=2, sort_keys=True)
+    }, json_file, indent=2)
     json_file.truncate()
 
 json_file.close()

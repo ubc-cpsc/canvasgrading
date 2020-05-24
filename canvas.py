@@ -13,6 +13,7 @@ class Canvas:
         response = requests.get(MAIN_URL + request,
                                 headers = self.token_header)
         while True:
+            response.raise_for_status()
             if (debug): print(response.text)
             retval.append(response.json())
             if stopAtFirst or 'current' not in response.links or \
@@ -81,7 +82,7 @@ class Canvas:
                              (course['id'], quiz['id']),
                              { 'quiz_groups': [group_data] } )
     
-    def questions(self, course, quiz, filter=None):
+    def questions(self, course, quiz, filter=None, include_groups=False):
         questions = {}
         for list in self.request('/courses/%d/quizzes/%d/questions?per_page=100' %
                                  (course['id'], quiz['id'])):
@@ -91,6 +92,8 @@ class Canvas:
                                                 question['quiz_group_id'])
                     if group:
                         question['points_possible'] = group['question_points']
+                        if include_groups:
+                            question['quiz_group_full'] = group
                     questions[question['id']] = question
         return questions
 
