@@ -16,15 +16,16 @@
     vertical-align: middle;
     height: 3cm;
     width: 10cm;
-    background: #7f7;
+    border: 1px solid;
+    /* background: #7f7; */
     font-family: cursive;
     margin: auto;
 }
 
 .sname {
-    height: 6cm;
+    height: 5cm;
     width: 15cm;
-    background: #f77;
+    /* background: #f77; */
 }
 
 /* This class is used in text-only questions (explanations, diagrams,
@@ -67,29 +68,34 @@
     text-align: center;
 }
 
-.points-possible::before {
-    content: "Points possible:";
-}
-
 .points-possible span, .points-canvas span {
     display: table-cell;
     width: 2cm;
     vertical-align: middle;
     height: 1cm;
     text-align: center;
+    border: 1px solid;
 }
 
-.points-possible span {
-    background: cyan;
+.points-possible::before {
+    content: "Points possible:";
+    vertical-align: middle;
+    display: table-cell;
 }
 
 .points-canvas::before {
     content: "Canvas autograder points:";
+    vertical-align: middle;
+    display: table-cell;
 }
 
-.points-canvas span {
-    background: yellow;
-}
+/* .points-possible span { */
+/*     background: cyan; */
+/* } */
+
+/* .points-canvas span { */
+/*     background: yellow; */
+/* } */
 
 /* Answer title, may contain number of attempts */
 .answer-title {
