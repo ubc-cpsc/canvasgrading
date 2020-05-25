@@ -329,8 +329,9 @@ print('Generating HTML files...')
 
 file_no = 1;
 template_file = start_file(args.output_prefix + '_template.html')
-exams_file    = start_file(args.output_prefix + '_exams_%d.html' % file_no)
-rawanswers_file = zipfile.ZipFile(args.output_prefix + '_raw_answers.zip', 'w')
+if not args.template_only:
+    exams_file    = start_file(args.output_prefix + '_exams_%d.html' % file_no)
+    rawanswers_file = zipfile.ZipFile(args.output_prefix + '_raw_answers.zip', 'w')
 
 write_exam_file(template_file, questions)
 
@@ -355,8 +356,9 @@ for qs in quiz_submissions:
         exams_file = start_file(args.output_prefix + '_exams_%d.html' % file_no)
 
 end_file(template_file)
-end_file(exams_file)
-rawanswers_file.close()
+if not args.template_only:
+    end_file(exams_file)
+    rawanswers_file.close()
 
 print('\nConverting to PDF...')
 css = [weasyprint.CSS(path.join(path.dirname(__file__),'canvasquiz.css'))]
@@ -370,4 +372,5 @@ for file in htmlfile_list:
 print('\nDONE. Created files:')
 for file in htmlfile_list:
     print('- ' + file + '.pdf')
-print('- ' + args.output_prefix + '_raw_answers.zip')
+if not args.template_only:
+    print('- ' + args.output_prefix + '_raw_answers.zip')
