@@ -61,8 +61,13 @@ class Canvas:
         return None
 
     def update_quiz(self, course, quiz_id, quiz_data):
-        return self.put('/courses/%d/quizzes/%d' % (course['id'], quiz_id),
-                        { 'quiz': quiz_data } )
+        if quiz_id:
+            return self.put('/courses/%d/quizzes/%d' %
+                            (course['id'], quiz_id),
+                            { 'quiz': quiz_data } )
+        else:
+            return self.post('/courses/%d/quizzes' % course['id'],
+                            { 'quiz': quiz_data } )
 
     def question_group(self, course, quiz, group_id):
         if group_id == None: return None
