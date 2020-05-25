@@ -59,6 +59,8 @@ def write_exam_file(htmlfile, questions, qs = None):
                 acct = student_accounts[snum]
             else:
                 print('Account not found for student: %s' % snum)
+        else:
+            acct = snum
 
         sub_questions = canvas.submission_questions(qs)
 
@@ -189,7 +191,7 @@ def write_exam_file(htmlfile, questions, qs = None):
         elif question_type != None:
             raise ValueError('Invalid question type: "%s"' % question_type)
         
-        htmlfile.write('''<div class="question-preamble"></div>
+        htmlfile.write('''<div class="question-preamble question-%d"></div>
         <div class="question-container question-%d">
         <h2 class="question-title">Question %d [%s]:</h2>
         <div class=question>%s</div>
@@ -200,7 +202,7 @@ def write_exam_file(htmlfile, questions, qs = None):
         <h3 class=answer-title>Answer%s:</h3>
         <div class=answer>%s</div>
         </div>
-        ''' % (question_id, question_id, question_name,
+        ''' % (question_id, question_id, question_id, question_name,
                question_text, worth, points,
                '' if num_attempts <= 1 else ' (%d attempts)' % num_attempts,
                answer_text))
@@ -245,6 +247,8 @@ group.add_argument("--not-question", action='append', nargs='+', type=int,
                    metavar="QUESTIONID", help="Questions to exclude")
 parser.add_argument("--css",
                     help="Additional CSS file to use in PDF creation.")
+parser.add_argument("--template-only", action='store_true',
+                    help="Create only the template, without students.")
 parser.add_argument("-d", "--debug", help="Enable debugging mode",
                     action='store_true')
 args = parser.parse_args()
@@ -314,8 +318,12 @@ print('Retrieving quiz questions...')
 questions = canvas.questions(course, quiz, question_included)
 
 print('Retrieving quiz submissions...')
-(quiz_submissions, submissions) = canvas.submissions(course, quiz,
-                                                     debug=args.debug)
+if args.template_only:
+    quiz_submissions = []
+    submissions = {}
+else:
+    (quiz_submissions, submissions) = canvas.submissions(course, quiz,
+                                                         debug=args.debug)
 
 print('Generating HTML files...')
 
@@ -353,7 +361,7 @@ rawanswers_file.close()
 print('\nConverting to PDF...')
 css = [weasyprint.CSS(path.join(path.dirname(__file__),'canvasquiz.css'))]
 if args.css:
-    css.append(args.css)
+    css.append(weasyprint.CSS(args.css))
 
 for file in htmlfile_list:
     print(file + '...  ', end='\r');
