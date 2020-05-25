@@ -45,16 +45,20 @@ def save_raw_answer(answer, identification):
 
 def write_exam_file(htmlfile, questions, qs = None):
     acct = ''
+    snum = ''
+    sname = ''
     answers = {}
     sub_questions = {}
     num_attempts = 0
     if qs != None:
         sub = submissions[qs['submission_id']]
         snum = sub['user']['sis_user_id']
-        if snum in student_accounts:
-            acct = student_accounts[snum]
-        else:
-            print('Account not found for student: %s' % snum)
+        sname = sub['user']['name']
+        if args.classlist:
+            if snum in student_accounts:
+                acct = student_accounts[snum]
+            else:
+                print('Account not found for student: %s' % snum)
 
         sub_questions = canvas.submission_questions(qs)
 
@@ -86,10 +90,19 @@ def write_exam_file(htmlfile, questions, qs = None):
                         if update_answer:
                             answers[answer['question_id']] = answer
 
-    htmlfile.write('''<div class='account-wrapper'>
-    <span class='account-label'>CS Alias:</span>
-    <span><span class='account'>%s</span></span>
-    </div>''' % acct)
+    if args.classlist:
+        htmlfile.write('''<div class='student-wrapper'>
+        <span class='account-label'>Account:</span>
+        <span><span class='account'>%s</span></span>
+        </div>''' % acct)
+    else:
+        htmlfile.write('''<div class='student-wrapper'>
+        <span class='snum-label'>Student Number:</span>
+        <span><span class='snum'>%s</span></span>
+        <span class='sname-label'>Name:</span>
+        <span><span class='sname'>%s</span></span>
+        </div>''' % (snum, sname))
+
     qn = 1
     for qt in sorted(questions.items(), key=lambda q: q[1]['question_name']):
         question = qt[1]
@@ -213,9 +226,9 @@ def question_included(qid):
         return True
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-l", "--classlist", required=True,
+parser.add_argument("-l", "--classlist",
                     type=str, #type=argparse.FileType('r', newline=''),
-                    help="CSV file containing student number and account")
+                    help="CSV file containing student number and account. If used, account is provided on the front page, otherwise it will include name and student number.")
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument("-f", "--canvas-token-file", type=argparse.FileType('r'),
                    help="File containing the Canvas token used for authentication")
@@ -230,6 +243,8 @@ group.add_argument("--only-question", action='append', nargs='+', type=int,
                    metavar="QUESTIONID", help="Questions to include")
 group.add_argument("--not-question", action='append', nargs='+', type=int,
                    metavar="QUESTIONID", help="Questions to exclude")
+parser.add_argument("--css",
+                    help="Additional CSS file to use in PDF creation.")
 parser.add_argument("-d", "--debug", help="Enable debugging mode",
                     action='store_true')
 args = parser.parse_args()
@@ -245,16 +260,17 @@ canvas = canvas.Canvas(args.canvas_token)
 student_accounts = {}
 htmlfile_list = []
 
-print('Reading classlist...')
-
-with open(args.classlist, 'r', newline='') as file:
-    reader = csv.DictReader(file)
-    if 'SNUM' not in reader.fieldnames:
-        raise ValueError('Classlist CSV file does not contain student number.')
-    if 'ACCT' not in reader.fieldnames:
-        raise ValueError('Classlist CSV file does not contain account.')
-    for row in reader:
-        student_accounts[row['SNUM']] = row['ACCT']
+if args.classlist:
+    print('Reading classlist...')
+    
+    with open(args.classlist, 'r', newline='') as file:
+        reader = csv.DictReader(file)
+        if 'SNUM' not in reader.fieldnames:
+            raise ValueError('Classlist CSV file does not contain student number.')
+        if 'ACCT' not in reader.fieldnames:
+            raise ValueError('Classlist CSV file does not contain account.')
+        for row in reader:
+            student_accounts[row['SNUM']] = row['ACCT']
 
 print('Reading data from Canvas...')
 
@@ -335,7 +351,9 @@ end_file(exams_file)
 rawanswers_file.close()
 
 print('\nConverting to PDF...')
-css = [weasyprint.CSS('canvasquiz.css')]
+css = [weasyprint.CSS(path.join(path.dirname(__file__),'canvasquiz.css'))]
+if args.css:
+    css.append(args.css)
 
 for file in htmlfile_list:
     print(file + '...  ', end='\r');
