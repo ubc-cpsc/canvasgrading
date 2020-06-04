@@ -88,7 +88,7 @@ if args.parts:
                 'long_description': p['Description'] if 'Description' in p \
                 else None,
                 'ratings': {0: {
-                    'points': float(p['Weight']) * 100,
+                    'points': round(float(p['Weight']) * 100,2),
                 }}
             }
             last = i
@@ -127,14 +127,14 @@ if args.marks:
             assess = {}
             totalcalc = 0
             for rub in assignment['rubric']:
-                rubpoints = float(mark[rub['id']]) * rub['points'] \
+                rubpoints = round(float(mark[rub['id']]) * rub['points'],2) \
                             if rub['id'] in mark else 0
                 rubcomments = mark['Comments__' + rub['id']] \
                               if 'Comments__' + rub['id'] in mark else None
                 totalcalc += rubpoints
                 assess[rub['id']] = {'points': rubpoints,
                                      'comments': rubcomments}
-            penalty = penaltypc * totalcalc / 100.0
+            penalty = round(penaltypc * totalcalc / 100.0,2)
             # TODO Ensure total == totalcalc - penalty within a tolerance
             assess['PENALTY'] = {
                 'points': -penalty,
