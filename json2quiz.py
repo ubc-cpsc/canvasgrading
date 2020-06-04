@@ -134,7 +134,7 @@ if 'groups' in values_from_json:
 if 'questions' in values_from_json:
     print('Pushing updates to questions...')
     for (question_id, question) in values_from_json['questions'].items():
-        pass
+
         if question['quiz_group_id'] in groups_from_file:
             question['quiz_group_id'] = groups_from_file[question['quiz_group_id']]['id']
         existing_id = None
@@ -144,6 +144,14 @@ if 'questions' in values_from_json:
             pass
         question = canvas.update_question(course, quiz, existing_id, question)
         questions[question['id']] = question
+
+for question in [q for q in questions.values()
+                 if q['question_type'] == 'matching_question']:
+    for answer in question['answers']:
+        answer['answer_match_left'] = answer['left']
+        answer['answer_match_right'] = answer['right']
+        del answer['left']
+        del answer['right']
 
 if args.strip:
     quiz      = {k:v for k, v in quiz.items()
