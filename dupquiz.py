@@ -77,6 +77,14 @@ for question in [q for q in questions.values()
     for answer in question['answers']:
         answer['answer_match_left'] = answer['left']
         answer['answer_match_right'] = answer['right']
+        
+for question in [q for q in questions.values()
+                 if q['question_type'] == 'multiple_dropdowns_question']:
+    for answer in question['answers']:
+        answer['answer_weight'] = answer['weight']
+        answer['answer_text'] = answer['text']
+        del answer['weight']
+        del answer['text']
 
 print('Retrieving quiz question groups...')
 groups = OrderedDict(sorted({g['id']: g for g in [
