@@ -23,7 +23,7 @@ QUIZ_REQ_FIELDS = ['id','title','description','quiz_type',
                    'published','one_time_results',
                    'only_visible_to_overrides']
 GROUP_REQ_FIELDS = ['id','name','pick_count','question_points',
-                    'assessment_question_bank_id']
+                    'assessment_question_bank_id', 'position']
 QUESTION_REQ_FIELDS = ['id','question_name','question_text','quiz_group_id',
                        'question_type','position','points_possible',
                        'correct_comments','incorrect_comments',
@@ -106,12 +106,7 @@ print('Using quiz: %s' % (quiz['title']))
 
 # Reading questions
 print('Retrieving current quiz questions...')
-questions = OrderedDict(sorted(canvas.questions(course, quiz, include_groups=True).items()))
-
-print('Retrieving current quiz question groups...')
-groups = OrderedDict(sorted({g['id']: g for g in [
-    question['quiz_group_full'] for question in questions.values()
-    if 'quiz_group_full' in question] }.items()))
+(questions, groups) = canvas.questions(course, quiz)
 
 if 'quiz' in values_from_json:
     print('Pushing updates to quiz...')

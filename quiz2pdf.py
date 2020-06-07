@@ -106,9 +106,7 @@ def write_exam_file(htmlfile, questions, qs = None):
         </div>''' % (snum, sname))
 
     qn = 1
-    for qt in sorted(questions.items(), key=lambda q: q[1]['question_name']):
-        question = qt[1]
-        question_id = qt[0]
+    for (question_id, question) in questions.items():
         question_name = question['question_name']
         question_text = question['question_text']
         question_type = question['question_type']
@@ -315,7 +313,7 @@ if not args.output_prefix:
 
 # Reading questions
 print('Retrieving quiz questions...')
-questions = canvas.questions(course, quiz, question_included)
+(questions, groups) = canvas.questions(course, quiz, question_included)
 
 print('Retrieving quiz submissions...')
 if args.template_only:

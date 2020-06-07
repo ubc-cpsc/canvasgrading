@@ -68,7 +68,7 @@ print('Using quiz: %s' % (quiz['title']))
 
 # Reading questions
 print('Retrieving quiz questions...')
-questions = OrderedDict(sorted(canvas.questions(course, quiz, include_groups=True).items()))
+(questions, groups) = canvas.questions(course, quiz)
 
 # Canvas API inconvenience: Matching type questions receive their
 # input in a format different than the output
@@ -85,11 +85,6 @@ for question in [q for q in questions.values()
         answer['answer_text'] = answer['text']
         del answer['weight']
         del answer['text']
-
-print('Retrieving quiz question groups...')
-groups = OrderedDict(sorted({g['id']: g for g in [
-    question['quiz_group_full'] for question in questions.values()
-    if 'quiz_group_full' in question] }.items()))
 
 if args.practice:
     quiz['quiz_type'] = 'practice_quiz'

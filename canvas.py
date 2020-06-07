@@ -1,5 +1,6 @@
 import requests
 import json
+from collections import OrderedDict
 
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
 
@@ -87,20 +88,38 @@ class Canvas:
                              (course['id'], quiz['id']),
                              { 'quiz_groups': [group_data] } )
     
-    def questions(self, course, quiz, filter=None, include_groups=False):
+    def questions(self, course, quiz, filter=None):
         questions = {}
+        groups = {}
+        i = 1
         for list in self.request('/courses/%d/quizzes/%d/questions?per_page=100' %
                                  (course['id'], quiz['id'])):
             for question in list:
                 if not filter or filter(question['id']):
-                    group = self.question_group(course, quiz,
-                                                question['quiz_group_id'])
+                    if question['quiz_group_id'] in groups:
+                        group = groups[question['quiz_group_id']]
+                    else:
+                        group = self.question_group(course, quiz,
+                                                    question['quiz_group_id'])
+                        groups[question['quiz_group_id']] = group
+                    
                     if group:
                         question['points_possible'] = group['question_points']
-                        if include_groups:
-                            question['quiz_group_full'] = group
+                        question['position'] = group['position']
+                    else:
+                        question['position'] = i
+                        i += 1
                     questions[question['id']] = question
-        return questions
+        del groups[None]
+        for g in groups.values():
+            for q in [q for q in questions.values()
+                      if q['position'] >= g['position'] and
+                      q['quiz_group_id'] is None]:
+                q['position'] += 1
+        return (OrderedDict(sorted(questions.items(),
+                                   key=lambda t:t[1]['position'])),
+                OrderedDict(sorted(groups.items(),
+                                   key=lambda t:t[1]['position'])))
 
     def update_question(self, course, quiz, question_id, question_data):
         if question_id:
