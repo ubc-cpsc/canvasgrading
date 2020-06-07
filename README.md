@@ -52,13 +52,15 @@ characters (spaces, etc.).
 include. If not specified, all questions are included. The ID of the
 question can be obtained by running this script with all questions
 (without this argument), the number provided before the text of each
-question is the question ID.
+question is the question ID. Alternatively, you may obtain the
+question ID by using the JSON sync script below.
 
-4. `--not-question QID QID ...`: A list of question IDs to
-exclude. If not specified, all questions are included. The ID of the
-question can be obtained by running this script with all questions
-(without this argument), the number provided before the text of each
-question is the question ID.
+4. `--not-question QID QID ...`: A list of question IDs to exclude. If
+not specified, all questions are included. The ID of the question can
+be obtained by running this script with all questions (without this
+argument), the number provided before the text of each question is the
+question ID. Alternatively, you may obtain the question ID by using
+the JSON sync script below.
 
 5. `-d`: Enter debug mode. In this mode, only the first 10 submissions
 are loaded from Canvas, and an extra `debug.json` file is
@@ -183,13 +185,28 @@ information only.
 The `-d` option is also provided to enter a debug mode, though at this
 point it provides no functionality.
 
+The script can update existing questions, which can be done by simply
+changing the values associated to the question without changing its
+key. It can also create new questions, by creating a new item in the
+JSON file with a key not currently associated to an existing question
+or group (e.g., a non-numeric key). The script currently has no
+support for deleting questions.
+
 Question groups are also supported, but only if there is at least one
 question in the group. Due to limitations of the Canvas API, question
-groups with no question cannot be loaded from Canvas. To add a
-question to an existing group, use the group ID itself. It is also
-possible to create new groups, in which case a non-numeric string
-should be used as a key, and questions to be added to that group
-should use the string as group ID.
+groups with no question directly associated to the group cannot be
+loaded from Canvas. This includes groups linked to question banks,
+even if the question bank has questions. To add a question to an
+existing group, use the group ID itself in the 'quiz_group_id'
+field. It is also possible to create new groups, in which case a
+non-numeric string should be used as a key, and questions to be added
+to that group should use the string key as group ID. You are strongly
+encouraged to maintain at least one question associated to each group,
+as groups with no question can't be loaded back to the file.
+
+It is also possible to reorder items in the quiz by changing the
+'order' item. Note that the name used in this item is for information
+purposes only, and will be ignored during updates.
 
 ## dupquiz.py
 
