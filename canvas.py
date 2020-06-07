@@ -29,12 +29,14 @@ class Canvas:
         response = requests.put(MAIN_URL + url, json = data,
                                 headers = self.token_header)
         response.raise_for_status()
+        if response.status_code == 204: return None
         return response.json()
 
     def post(self, url, data):
         response = requests.post(MAIN_URL + url, json = data,
                                  headers = self.token_header)
         response.raise_for_status()
+        if response.status_code == 204: return None
         return response.json()
 
     def courses(self):
@@ -130,6 +132,11 @@ class Canvas:
             return self.post('/courses/%d/quizzes/%d/questions' %
                              (course['id'], quiz['id']),
                              { 'question': question_data } )
+    
+    def quiz_reorder(self, course, quiz, items):
+        return self.post('/courses/%d/quizzes/%d/reorder' %
+                         (course['id'], quiz['id']),
+                         { 'order': items } )
     
     def submissions(self, course, quiz, include_user=True,
                     include_submission=True, include_history=True,

@@ -126,6 +126,7 @@ if 'groups' in values_from_json:
         groups_from_file[group_id] = group
         groups[group['id']] = group
 
+questions_from_file = {}
 if 'questions' in values_from_json:
     print('Pushing updates to questions...')
     for (question_id, question) in values_from_json['questions'].items():
@@ -138,7 +139,24 @@ if 'questions' in values_from_json:
         except:
             pass
         question = canvas.update_question(course, quiz, existing_id, question)
+        questions_from_file[question_id] = question
         questions[question['id']] = question
+
+if 'order' in values_from_json:
+    print('Pushing updates to question order...')
+    for item in values_from_json['order']:
+        if item['type'] == 'question':
+            if item['id'] in questions_from_file:
+                item['id'] = questions_from_file[item['id']]['id']
+        elif item['type'] == 'group':
+            if item['id'] in groups_from_file:
+                item['id'] = groups_from_file[item['id']]['id']
+    canvas.quiz_reorder(course, quiz, values_from_json['order'])
+
+if len(values_from_json) > 0:
+    # Reading questions
+    print('Retrieving updated list of quiz questions...')
+    (questions, groups) = canvas.questions(course, quiz)
 
 for question in [q for q in questions.values()
                  if q['question_type'] == 'matching_question']:
@@ -166,10 +184,25 @@ if args.strip:
                      if k in QUESTION_REQ_FIELDS}
                  for id, question in questions.items()}
 
+order = []
+groups_ordered = set()
+for question in questions.values():
+    if question['quiz_group_id']:
+        if question['quiz_group_id'] not in groups_ordered:
+            order.append({'type': 'group',
+                          'id': question['quiz_group_id'],
+                          'name': groups[question['quiz_group_id']]['name']})
+            groups_ordered.add(question['quiz_group_id'])
+    else:
+        order.append({'type': 'question',
+                      'id': question['id'],
+                      'name': question['question_name']})
+
 if args.load_quiz:
     print('Saving values back to JSON file...')
     json_file.seek(0)
     json.dump({ 'quiz': quiz,
+                'order': order,
                 'groups': groups,
                 'questions': questions
     }, json_file, indent=2)
