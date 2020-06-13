@@ -8,6 +8,7 @@ import json
 import requests
 import zipfile
 import argparse
+import canvas
 
 def process_submission(qs):
     answers = {}

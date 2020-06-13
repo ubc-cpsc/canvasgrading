@@ -97,20 +97,20 @@ class Canvas:
         for list in self.request('/courses/%d/quizzes/%d/questions?per_page=100' %
                                  (course['id'], quiz['id'])):
             for question in list:
-                if not filter or filter(question['id']):
-                    if question['quiz_group_id'] in groups:
-                        group = groups[question['quiz_group_id']]
-                    else:
-                        group = self.question_group(course, quiz,
-                                                    question['quiz_group_id'])
-                        groups[question['quiz_group_id']] = group
+                if question['quiz_group_id'] in groups:
+                    group = groups[question['quiz_group_id']]
+                else:
+                    group = self.question_group(course, quiz,
+                                                question['quiz_group_id'])
+                    groups[question['quiz_group_id']] = group
                     
-                    if group:
-                        question['points_possible'] = group['question_points']
-                        question['position'] = group['position']
-                    else:
-                        question['position'] = i
-                        i += 1
+                if group:
+                    question['points_possible'] = group['question_points']
+                    question['position'] = group['position']
+                else:
+                    question['position'] = i
+                    i += 1
+                if not filter or filter(question['id']):
                     questions[question['id']] = question
         del groups[None]
         for g in groups.values():
