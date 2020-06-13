@@ -70,22 +70,6 @@ print('Using quiz: %s' % (quiz['title']))
 print('Retrieving quiz questions...')
 (questions, groups) = canvas.questions(course, quiz)
 
-# Canvas API inconvenience: Matching type questions receive their
-# input in a format different than the output
-for question in [q for q in questions.values()
-                 if q['question_type'] == 'matching_question']:
-    for answer in question['answers']:
-        answer['answer_match_left'] = answer['left']
-        answer['answer_match_right'] = answer['right']
-        
-for question in [q for q in questions.values()
-                 if q['question_type'] == 'multiple_dropdowns_question']:
-    for answer in question['answers']:
-        answer['answer_weight'] = answer['weight']
-        answer['answer_text'] = answer['text']
-        del answer['weight']
-        del answer['text']
-
 if args.practice:
     quiz['quiz_type'] = 'practice_quiz'
     quiz['unlock_at'] = quiz['lock_at']

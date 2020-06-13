@@ -139,8 +139,18 @@ if 'questions' in values_from_json:
         except:
             pass
         question = canvas.update_question(course, quiz, existing_id, question)
+        question['updated'] = True
         questions_from_file[question_id] = question
         questions[question['id']] = question
+    for (question_id, question) in questions.items():
+        if 'updated' not in question:
+            print('Question %d (%s) not found in JSON file. Text:\n%s' %
+                  (question_id, question['question_name'], question['question_text']))
+            delete = ''
+            while delete not in ['y', 'n']:
+                delete = input('Delete [y/n]? ').lower()
+            if delete == 'y':
+                canvas.delete_question(course, quiz, question_id)
 
 if 'order' in values_from_json:
     print('Pushing updates to question order...')
@@ -157,22 +167,6 @@ if len(values_from_json) > 0:
     # Reading questions
     print('Retrieving updated list of quiz questions...')
     (questions, groups) = canvas.questions(course, quiz)
-
-for question in [q for q in questions.values()
-                 if q['question_type'] == 'matching_question']:
-    for answer in question['answers']:
-        answer['answer_match_left'] = answer['left']
-        answer['answer_match_right'] = answer['right']
-        del answer['left']
-        del answer['right']
-
-for question in [q for q in questions.values()
-                 if q['question_type'] == 'multiple_dropdowns_question']:
-    for answer in question['answers']:
-        answer['answer_weight'] = answer['weight']
-        answer['answer_text'] = answer['text']
-        del answer['weight']
-        del answer['text']
 
 if args.strip:
     quiz      = {k:v for k, v in quiz.items()

@@ -39,6 +39,12 @@ class Canvas:
         if response.status_code == 204: return None
         return response.json()
 
+    def delete(self, url):
+        response = requests.delete(MAIN_URL + url, headers = self.token_header)
+        response.raise_for_status()
+        if response.status_code == 204: return None
+        return response.json()
+
     def courses(self):
         courses = []
         for list in self.request('/courses?include[]=term&state[]=available'):
@@ -123,15 +129,36 @@ class Canvas:
                 OrderedDict(sorted(groups.items(),
                                    key=lambda t:t[1]['position'])))
 
-    def update_question(self, course, quiz, question_id, question_data):
+    def update_question(self, course, quiz, question_id, question):
+        # Reformat question data to account for different format
+        # between input and output in Canvas API
+        if 'answers' in question:
+            for answer in question['answers']:
+                if 'html' in answer:
+                    answer['answer_html'] = answer['html']
+                if question['question_type'] == 'matching_question':
+                    if 'left' in answer:
+                        answer['answer_match_left'] = answer['left']
+                    if 'right' in answer:
+                        answer['answer_match_right'] = answer['right']
+                if question['question_type'] == 'multiple_dropdowns_question':
+                    if 'weight' in answer:
+                        answer['answer_weight'] = answer['weight']
+                    if 'text' in answer:
+                        answer['answer_text'] = answer['text']
+        # Update
         if question_id:
             return self.put('/courses/%d/quizzes/%d/questions/%d' %
                             (course['id'], quiz['id'], question_id),
-                            { 'question': question_data } )
+                            { 'question': question } )
         else:
             return self.post('/courses/%d/quizzes/%d/questions' %
                              (course['id'], quiz['id']),
-                             { 'question': question_data } )
+                             { 'question': question } )
+    
+    def delete_question(self, course, quiz, question_id):
+        return self.delete('/courses/%d/quizzes/%d/questions/%d' %
+                           (course['id'], quiz['id'], question_id))
     
     def quiz_reorder(self, course, quiz, items):
         return self.post('/courses/%d/quizzes/%d/reorder' %
