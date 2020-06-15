@@ -16,7 +16,7 @@ def process_submission(qs):
     
     sub = submissions[qs['submission_id']]
     snum = sub['user']['sis_user_id']
-    sub_questions = canvas.submission_questions(qs)
+    sub_questions = quiz.submission_questions(qs)
             
     variation = {}
     for attempt in sub['submission_history']:
@@ -79,15 +79,9 @@ def question_included(qid):
         return True
 
 parser = argparse.ArgumentParser()
-group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument("-f", "--canvas-token-file", type=argparse.FileType('r'),
-                   help="File containing the Canvas token used for authentication")
-group.add_argument("-t", "--canvas-token",
-                   help="Canvas token used for authentication")
+canvas.Canvas.add_arguments(parser, quiz=True)
 parser.add_argument("-p", "--output-prefix",
                     help="Path/prefix for output files")
-parser.add_argument("-c", "--course", type=int, help="Course ID")
-parser.add_argument("-q", "--quiz", type=int, help="Quiz ID")
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--only-question", action='append', nargs='+', type=int,
                    metavar="QUESTIONID", help="Questions to include")
@@ -100,45 +94,16 @@ args = parser.parse_args()
 flatten_list(args.only_question)
 flatten_list(args.not_question)
 
-if args.canvas_token_file:
-    args.canvas_token = args.canvas_token_file.read().strip()
-    args.canvas_token_file.close()
-canvas = canvas.Canvas(args.canvas_token)
+canvas = canvas.Canvas(args=args)
 
 zipfiles = {}
 
 print('Reading data from Canvas...')
-
-course = None
-if args.course:
-    course = canvas.course(args.course)
-if course == None:
-    courses = canvas.courses()
-    for index, course in enumerate(courses):
-        print("%2d: %7d - %10s / %s" %
-              (index, course['id'], course['term']['name'],
-               course['course_code']))
-    
-    course_index = int(input('Which course? '))
-    course = courses[course_index]
-
-course_id = course['id']
+course = canvas.course(args.course, prompt_if_needed=True)
 print('Using course: %s / %s' % (course['term']['name'],
                                  course['course_code']))
 
-# Reading quiz list
-quiz = None
-if args.quiz:
-    quiz = canvas.quiz(course, args.quiz)
-
-if quiz == None:
-    quizzes = canvas.quizzes(course)
-    for index, quiz in enumerate(quizzes):
-        print("%2d: %7d - %s" % (index, quiz['id'], quiz['title']))
-        
-    quiz_index = int(input('Which quiz? '))
-    quiz = quizzes[quiz_index]
-
+quiz = course.quiz(args.quiz, prompt_if_needed=True)
 print('Using quiz: %s' % (quiz['title']))
 
 if not args.output_prefix:
@@ -146,15 +111,14 @@ if not args.output_prefix:
     print('Using prefix: %s' % args.output_prefix);
 
 print('Retrieving quiz submissions...')
-(quiz_submissions, submissions) = canvas.submissions(course, quiz,
-                                                     debug=args.debug)
+(quiz_submissions, submissions) = quiz.submissions(debug=args.debug)
 
 print('\nGenerating files...')
 
 if args.debug:
     with open('debug.json', 'w') as file:
         data = {}
-        data['quiz'] = quiz
+        data['quiz'] = quiz.data
         data['quiz_submissions'] = quiz_submissions
         data['submissions'] = submissions
         json.dump(data, file, indent=2)

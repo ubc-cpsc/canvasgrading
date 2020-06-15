@@ -30,15 +30,9 @@ QUESTION_REQ_FIELDS = ['id','question_name','question_text','quiz_group_id',
                        'neutral_comments','text_after_answers','answers']
 
 parser = argparse.ArgumentParser()
-group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument("-f", "--canvas-token-file", type=argparse.FileType('r'),
-                   help="File containing the Canvas token used for authentication")
-group.add_argument("-t", "--canvas-token",
-                   help="Canvas token used for authentication")
+canvas.Canvas.add_arguments(parser, quiz=True)
 parser.add_argument("json_file",
                     help="JSON file, may be an input file (for pushing), an oautput file (for loading), or both (for sync).")
-parser.add_argument("-c", "--course", type=int, help="Course ID")
-parser.add_argument("-q", "--quiz", type=int, help="Quiz ID")
 parser.add_argument("-p", "--push-quiz", action='store_true',
                     help="Push JSON values to Canvas")
 parser.add_argument("-l", "--load-quiz", action='store_true',
@@ -48,11 +42,7 @@ parser.add_argument("-s", "--strip", action='store_true',
 parser.add_argument("-d", "--debug", help="Enable debugging mode",
                     action='store_true')
 args = parser.parse_args()
-
-if args.canvas_token_file:
-    args.canvas_token = args.canvas_token_file.read().strip()
-    args.canvas_token_file.close()
-canvas = canvas.Canvas(args.canvas_token)
+canvas = canvas.Canvas(args=args)
 
 if args.push_quiz and args.load_quiz:
     json_file = open(args.json_file, mode='r+')
@@ -70,47 +60,23 @@ if args.push_quiz:
        'id' in values_from_json['quiz']:
         args.quiz = values_from_json['quiz']['id']
 else:
-    values_from_json = {}    
+    values_from_json = {}
 
 print('Reading data from Canvas...')
-course = None
-if args.course:
-    course = canvas.course(args.course)
-if course == None:
-    courses = canvas.courses()
-    for index, course in enumerate(courses):
-        print("%2d: %7d - %10s / %s" %
-              (index, course['id'], course['term']['name'],
-               course['course_code']))
-    
-    course_index = int(input('Which course? '))
-    course = courses[course_index]
-
+course = canvas.course(args.course, prompt_if_needed=True)
 print('Using course: %s / %s' % (course['term']['name'],
                                  course['course_code']))
 
-# Reading quiz list
-quiz = None
-if args.quiz:
-    quiz = canvas.quiz(course, args.quiz)
-
-if quiz == None:
-    quizzes = canvas.quizzes(course)
-    for index, quiz in enumerate(quizzes):
-        print("%2d: %7d - %s" % (index, quiz['id'], quiz['title']))
-        
-    quiz_index = int(input('Which quiz? '))
-    quiz = quizzes[quiz_index]
-
+quiz = course.quiz(args.quiz, prompt_if_needed=True)
 print('Using quiz: %s' % (quiz['title']))
 
 # Reading questions
 print('Retrieving current quiz questions...')
-(questions, groups) = canvas.questions(course, quiz)
+(questions, groups) = quiz.questions()
 
 if 'quiz' in values_from_json:
     print('Pushing updates to quiz...')
-    quiz = canvas.update_quiz(course, quiz['id'], values_from_json['quiz'])
+    quiz = quiz.update_quiz(values_from_json['quiz'])
 
 groups_from_file = {}
 if 'groups' in values_from_json:
@@ -121,8 +87,7 @@ if 'groups' in values_from_json:
             if int(group_id) in groups: existing_id = int(group_id)
         except:
             pass
-        group = canvas.update_question_group(course, quiz, existing_id,
-                                             group)['quiz_groups'][0]
+        group = quiz.update_question_group(existing_id, group)['quiz_groups'][0]
         groups_from_file[group_id] = group
         groups[group['id']] = group
 
@@ -130,7 +95,6 @@ questions_from_file = {}
 if 'questions' in values_from_json:
     print('Pushing updates to questions...')
     for (question_id, question) in values_from_json['questions'].items():
-
         if question['quiz_group_id'] in groups_from_file:
             question['quiz_group_id'] = groups_from_file[question['quiz_group_id']]['id']
         existing_id = None
@@ -138,19 +102,20 @@ if 'questions' in values_from_json:
             if int(question_id) in questions: existing_id = int(question_id)
         except:
             pass
-        question = canvas.update_question(course, quiz, existing_id, question)
+        question = quiz.update_question(existing_id, question)
         question['updated'] = True
         questions_from_file[question_id] = question
         questions[question['id']] = question
     for (question_id, question) in questions.items():
         if 'updated' not in question:
             print('Question %d (%s) not found in JSON file. Text:\n%s' %
-                  (question_id, question['question_name'], question['question_text']))
+                  (question_id, question['question_name'],
+                   question['question_text']))
             delete = ''
             while delete not in ['y', 'n']:
                 delete = input('Delete [y/n]? ').lower()
             if delete == 'y':
-                canvas.delete_question(course, quiz, question_id)
+                quiz.delete_question(question_id)
 
 if 'order' in values_from_json:
     print('Pushing updates to question order...')
@@ -161,12 +126,12 @@ if 'order' in values_from_json:
         elif item['type'] == 'group':
             if item['id'] in groups_from_file:
                 item['id'] = groups_from_file[item['id']]['id']
-    canvas.quiz_reorder(course, quiz, values_from_json['order'])
+    quiz.reorder_questions(values_from_json['order'])
 
 if len(values_from_json) > 0:
     # Reading questions
     print('Retrieving updated list of quiz questions...')
-    (questions, groups) = canvas.questions(course, quiz)
+    (questions, groups) = quiz.questions()
 
 if args.strip:
     quiz      = {k:v for k, v in quiz.items()

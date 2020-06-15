@@ -10,21 +10,12 @@ import argparse
 import canvas
 
 parser = argparse.ArgumentParser()
+canvas.Canvas.add_arguments(parser, quiz=True)
 parser.add_argument("grades", type=str,
                     help="CSV file containing grades")
-group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument("-f", "--canvas-token-file", type=argparse.FileType('r'),
-                   help="File containing the Canvas token used for authentication")
-group.add_argument("-t", "--canvas-token",
-                   help="Canvas token used for authentication")
-parser.add_argument("-c", "--course", type=int, help="Course ID")
-parser.add_argument("-q", "--quiz", type=int, help="Quiz ID")
 args = parser.parse_args()
 
-if args.canvas_token_file:
-    args.canvas_token = args.canvas_token_file.read().strip()
-    args.canvas_token_file.close()
-canvas = canvas.Canvas(args.canvas_token)
+canvas = canvas.Canvas(args=args)
 
 grades = []
 student_sub = {}
@@ -40,41 +31,15 @@ with open(args.grades, newline='') as csvfile:
         grades.append(row)
 
 print('Reading data from Canvas...')
-
-course = None
-if args.course:
-    course = canvas.course(args.course)
-if course == None:
-    courses = canvas.courses()
-    for index, course in enumerate(courses):
-        print("%2d: %7d - %10s / %s" %
-              (index, course['id'], course['term']['name'],
-               course['course_code']))
-    
-    course_index = int(input('Which course? '))
-    course = courses[course_index]
-
+course = canvas.course(args.course, prompt_if_needed=True)
 print('Using course: %s / %s' % (course['term']['name'],
                                  course['course_code']))
 
-# Reading quiz list
-quiz = None
-if args.quiz:
-    quiz = canvas.quiz(course, args.quiz)
-
-if quiz == None:
-    quizzes = canvas.quizzes(course)
-    for index, quiz in enumerate(quizzes):
-        print("%2d: %7d - %s" % (index, quiz['id'], quiz['title']))
-        
-    quiz_index = int(input('Which quiz? '))
-    quiz = quizzes[quiz_index]
-
+quiz = course.quiz(args.quiz, prompt_if_needed=True)
 print('Using quiz: %s' % (quiz['title']))
 
 print('Retrieving quiz submissions...')
-(quiz_submissions, submissions) = canvas.submissions(course, quiz,
-                                                     include_history=False)
+(quiz_submissions, submissions) = quiz.submissions(include_history=False)
 
 for submission in submissions.values():
     submission['quiz_submissions'] = []
@@ -96,10 +61,8 @@ for grade in grades:
     for sub in student_sub[grade['Student']]:
         for qs in sub['quiz_submissions']:
             if str(qs['attempt']) == grade['Attempt']:
-                canvas.send_quiz_grade(course, qs,
-                                       int(grade['Question']),
-                                       grade['Grade'],
-                                       grade['Comments'])
+                quiz.send_quiz_grade(qs, int(grade['Question']),
+                                     grade['Grade'], grade['Comments'])
     
     num_exams += 1
 

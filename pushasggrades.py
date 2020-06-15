@@ -13,60 +13,24 @@ import argparse
 import canvas
 
 parser = argparse.ArgumentParser()
-group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument("-f", "--canvas-token-file", type=argparse.FileType('r'),
-                   help="File containing the Canvas token used for authentication")
-group.add_argument("-t", "--canvas-token",
-                   help="Canvas token used for authentication")
-parser.add_argument("-c", "--course", type=int, help="Course ID")
-parser.add_argument("-a", "--assignment", type=int, help="Assignment ID")
+canvas.Canvas.add_arguments(parser, assignment=True)
 parser.add_argument("-p", "--parts", help="CSV file with assignment parts")
 parser.add_argument("-m", "--marks", help="CSV file with assignment marks")
 parser.add_argument("-d", "--debug", help="Enable debugging mode",
                     action='store_true')
 args = parser.parse_args()
-
-if args.canvas_token_file:
-    args.canvas_token = args.canvas_token_file.read().strip()
-    args.canvas_token_file.close()
-canvas = canvas.Canvas(args.canvas_token)
+canvas = canvas.Canvas(args=args)
 
 print('Reading data from Canvas...')
-
-course = None
-if args.course:
-    course = canvas.course(args.course)
-if course == None:
-    courses = canvas.courses()
-    for index, course in enumerate(courses):
-        print("%2d: %7d - %10s / %s" %
-              (index, course['id'], course['term']['name'],
-               course['course_code']))
-    
-    course_index = int(input('Which course? '))
-    course = courses[course_index]
-
+course = canvas.course(args.course, prompt_if_needed=True)
 print('Using course: %s / %s' % (course['term']['name'],
                                  course['course_code']))
 
-# Reading assignment list
-assignment = None
-if args.assignment:
-    assignment = canvas.assignment(course, args.assignment)
-
-if assignment == None:
-    assignments = canvas.assignments(course)
-    for index, assignment in enumerate(assignments):
-        print("%2d: %7d - %s" % (index, assignment['id'],
-                                 assignment['name']))
-        
-    asg_index = int(input('Which assignment? '))
-    assignment = assignments[asg_index]
-
+assignment = course.assignment(args.assignment, prompt_if_needed=True)
 print('Using assignment: %s' % (assignment['name']))
 
 # Reading students
-students = canvas.students(course)
+students = course.students()
 
 # Reading parts CSV file
 if args.parts:
@@ -99,14 +63,15 @@ if args.parts:
             'ratings': {0: {'points': 0}}
         }
 
-        canvas.update_rubric(course, assignment, {
+        assignment.update_rubric({
             'title': assignment['name'],
             'free_form_criterion_comments': '1',
             'criteria': criteria
         })
 
 if args.marks:
-    assignment = canvas.assignment(course, assignment['id'])
+    # Update local representation of assignment
+    assignment = course.assignment(assignment['id'])
     
     with open(args.marks, 'r', newline='') as file:
         marks = csv.DictReader(file)
@@ -141,6 +106,6 @@ if args.marks:
                 'comments': penaltyreason
             }
             # TODO General comments
-            canvas.send_assig_grade(course, assignment, student, assess)
+            assignment.send_assig_grade(student, assess)
             
 print('\nDONE.')
