@@ -72,6 +72,9 @@ if args.parts:
 if args.marks:
     # Update local representation of assignment
     assignment = course.assignment(assignment['id'])
+    if 'rubric' not in assignment.data:
+        print('ERROR: Assignment has not been set up with a rubric.')
+        exit(0)
     
     with open(args.marks, 'r', newline='') as file:
         marks = csv.DictReader(file)
