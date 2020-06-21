@@ -314,12 +314,12 @@ class Quiz(Canvas):
 
 class Assignment(Canvas):
     
-    def __init__(self, token, course, assg_data):
-        super().__init__(token)
+    def __init__(self, course, assg_data):
+        super().__init__(course.token)
         self.course = course
         self.data = assg_data
         self.id = assg_data['id']
-        self.url_prefix = '%s/quizzes/%d' % (course.url_prefix, self.id)
+        self.url_prefix = '%s/assignments/%d' % (course.url_prefix, self.id)
     
     def __getitem__(self, index):
         return self.data[index]
