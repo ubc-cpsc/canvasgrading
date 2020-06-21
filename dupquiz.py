@@ -67,7 +67,22 @@ for (question_id, question) in questions.items():
     if question['quiz_group_id'] in new_groups:
         question['quiz_group_id'] = new_groups[question['quiz_group_id']]['id']
     question = quiz.update_question(None, question)
+    questions[question_id] = question
     new_questions[question['id']] = question
+
+print('Updating question order...')
+order = []
+groups_ordered = set()
+for question in questions.values():
+    if question['quiz_group_id']:
+        if question['quiz_group_id'] not in groups_ordered:
+            order.append({'type': 'group',
+                          'id': question['quiz_group_id']})
+            groups_ordered.add(question['quiz_group_id'])
+    else:
+        order.append({'type': 'question',
+                      'id': question['id']})
+quiz.reorder_questions(order)
 
 print('\nDONE. New quiz: ')
 print('\tTitle: %s' % quiz['title'])
