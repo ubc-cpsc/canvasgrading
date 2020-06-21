@@ -230,7 +230,7 @@ class Quiz(Canvas):
                     i += 1
                 if not filter or filter(question['id']):
                     questions[question['id']] = question
-        del groups[None]
+        if None in groups: del groups[None]
         for g in groups.values():
             for q in [q for q in questions.values()
                       if q['position'] >= g['position'] and
