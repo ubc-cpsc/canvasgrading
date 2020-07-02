@@ -10,6 +10,7 @@ import weasyprint
 import zipfile
 import argparse
 from collections import OrderedDict
+import shlex
 
 import canvas
 
@@ -29,6 +30,30 @@ QUESTION_REQ_FIELDS = ['id','question_name','question_text','quiz_group_id',
                        'correct_comments','incorrect_comments',
                        'neutral_comments','text_after_answers','answers']
 
+def canvas_to_alternate(question):
+    if question['question_type'] == 'fill_in_multiple_blanks_question':
+        question['options'] = options = OrderedDict()
+        for answer in question['answers']:
+            if answer['blank_id'] not in options:
+                options[answer['blank_id']] = answer['text']
+            elif isinstance(options[answer['blank_id']], list):
+                options[answer['blank_id']] += answer['text']
+            else:
+                options[answer['blank_id']] = [options[answer['blank_id']],
+                                               answer['text']]
+        del question['answers']
+    return question
+
+def alternate_to_canvas(question):
+    if 'options' not in question: return question
+    if question['question_type'] == 'fill_in_multiple_blanks_question':
+        question['answers'] = []
+        for token, tokenv in question['options'].items():
+            for value in tokenv if isinstance(tokenv, list) else [tokenv]:
+                question['answers'].append(
+                    {'text': value, 'weigth': 100.0, 'blank_id': token})
+    return question
+
 parser = argparse.ArgumentParser()
 canvas.Canvas.add_arguments(parser, quiz=True)
 parser.add_argument("json_file",
@@ -39,6 +64,8 @@ parser.add_argument("-l", "--load-quiz", action='store_true',
                     help="Load JSON from values retrieved from Canvas")
 parser.add_argument("-s", "--strip", action='store_true',
                     help="Strip from output JSON values that cannot be pushed back in updates.")
+parser.add_argument("-a", "--alternative-format", action='store_true',
+                    help="Use alternative format for answers in some types of questions.")
 parser.add_argument("-d", "--debug", help="Enable debugging mode",
                     action='store_true')
 args = parser.parse_args()
@@ -102,7 +129,8 @@ if 'questions' in values_from_json:
             if int(question_id) in questions: existing_id = int(question_id)
         except:
             pass
-        question = quiz.update_question(existing_id, question)
+        question = quiz.update_question(existing_id,
+                                        alternate_to_canvas(question))
         question['updated'] = True
         questions_from_file[question_id] = question
         questions[question['id']] = question
@@ -143,6 +171,10 @@ if args.strip:
                      if k in QUESTION_REQ_FIELDS}
                  for id, question in questions.items()}
 
+if args.alternative_format:
+    for question in questions.values():
+        canvas_to_alternate(question)
+
 order = []
 groups_ordered = set()
 for question in questions.values():
@@ -150,12 +182,14 @@ for question in questions.values():
         if question['quiz_group_id'] not in groups_ordered:
             order.append({'type': 'group',
                           'id': question['quiz_group_id'],
-                          'name': groups[question['quiz_group_id']]['name']})
+                          'name': groups[question['quiz_group_id']]['name'],
+                          'points': groups[question['quiz_group_id']]['question_points']})
             groups_ordered.add(question['quiz_group_id'])
     else:
         order.append({'type': 'question',
                       'id': question['id'],
-                      'name': question['question_name']})
+                      'name': question['question_name'],
+                      'points': question['points_possible']})
 
 if args.load_quiz:
     print('Saving values back to JSON file...')
