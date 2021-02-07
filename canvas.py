@@ -85,8 +85,8 @@ class Canvas:
                 courses = self.courses()
                 for index, course in enumerate(courses):
                     print("%2d: %7d - %10s / %s" %
-                          (index, course['id'], course['term']['name'],
-                           course['course_code']))
+                          (index, course['id'], course.get('term', {}).get('name', 'NO TERM'),
+                           course.get('course_code', 'UNKNOWN COURSE')))
                 course_index = int(input('Which course? '))
                 return Course(self, courses[course_index])
         return None

@@ -194,7 +194,7 @@ for question in questions.values():
 if args.load_quiz:
     print('Saving values back to JSON file...')
     json_file.seek(0)
-    json.dump({ 'quiz': quiz,
+    json.dump({ 'quiz': {k: v for k, v in quiz.items()},
                 'order': order,
                 'groups': groups,
                 'questions': questions
