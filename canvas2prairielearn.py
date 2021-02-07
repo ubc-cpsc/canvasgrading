@@ -159,7 +159,7 @@ for question in questions.values():
             template.write(question['question_text'] + '\n')
             template.write('</p>\n</pl-question-panel>\n')
             answer = question['answers'][0]
-            template.write(f'<pl-string-input answers-name="input" correct-answer="{answer["text"]}"></pl-string-inpust>\n')
+            template.write(f'<pl-string-input answers-name="input" correct-answer="{answer["text"]}"></pl-string-input>\n')
             
         elif question['question_type'] == 'fill_in_multiple_blanks_question':
             question_text = question['question_text']
