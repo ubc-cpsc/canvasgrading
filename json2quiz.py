@@ -1,16 +1,10 @@
 #! /usr/bin/python3
 
 import os
-import csv
-import re
 from os import path
 import json
-import requests
-import weasyprint
-import zipfile
 import argparse
 from collections import OrderedDict
-import shlex
 
 import canvas
 
