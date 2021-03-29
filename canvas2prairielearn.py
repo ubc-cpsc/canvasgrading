@@ -33,13 +33,6 @@ canvas = canvas.Canvas(args=args)
 if not os.path.exists(os.path.join(args.pl_repo, 'infoCourse.json')):
     raise Exception("Provided directory is not a PrairieLearn repository")
 
-questions_dir = os.path.join(args.pl_repo, 'questions')
-if not os.path.isdir(questions_dir):
-    os.makedirs(questions_dir)
-assessments_dir = os.path.join(args.pl_repo, 'courseInstances', args.pl_course_instance, 'assessments')
-if not os.path.isdir(assessments_dir):
-    os.makedirs(assessments_dir)
-
 print('Reading data from Canvas...')
 course = canvas.course(args.course, prompt_if_needed=True)
 print('Using course: %s / %s' % (course['term']['name'],
@@ -51,6 +44,13 @@ print('Using quiz: %s' % (quiz['title']))
 # Reading questions
 print('Retrieving quiz questions from Canvas...')
 (questions, groups) = quiz.questions()
+
+questions_dir = os.path.join(args.pl_repo, 'questions', file_name_only(quiz['title']))
+if not os.path.isdir(questions_dir):
+    os.makedirs(questions_dir)
+assessments_dir = os.path.join(args.pl_repo, 'courseInstances', args.pl_course_instance, 'assessments')
+if not os.path.isdir(assessments_dir):
+    os.makedirs(assessments_dir)
 
 quiz_name = os.path.join(assessments_dir, file_name_only(quiz['title']))
 if os.path.exists(quiz_name):
@@ -98,21 +98,38 @@ for question in questions.values():
     os.makedirs(question_dir)
 
     pl_quiz['zones'][0]['questions'].append({
-        'id': question_name,
+        'id': file_name_only(quiz['title']) + '/' + question_name,
         'points': question['points_possible']
     })
     
     with open(os.path.join(question_dir, 'info.json'), 'w') as info:
-        json.dump({
+        obj = {
             'uuid': str(uuid.uuid4()),
             'type': 'v3',
             'title': question_title,
             'topic': args.topic,
             'tags': ['fromcanvas']
-        }, info, indent=4)
+        }
+        if question['question_type'] == 'text_only_question' or \
+           question['question_type'] == 'essay_question':
+            obj['gradingMethod'] = 'Manual'
+        json.dump(obj, info, indent=4)
 
     with open(os.path.join(question_dir, 'question.html'), 'w') as template:
-        if question['question_type'] == 'multiple_answers_question':
+        if question['question_type'] == 'text_only_question':
+            template.write('<pl-question-panel>\n<p>\n')
+            template.write(question['question_text'] + '\n')
+            template.write('</p>\n</pl-question-panel>\n')
+        elif question['question_type'] == 'essay_question':
+            template.write('<pl-question-panel>\n<p>\n')
+            template.write(question['question_text'] + '\n')
+            template.write('</p>\n</pl-question-panel>\n')
+            template.write('<pl-file-editor file-name="answer.txt"></pl-file-editor>\n')
+            template.write('<pl-submission-panel>\n')
+            template.write('  <pl-feedback></pl-feedback>\n')
+            template.write('  <pl-file-preview></pl-file-preview>\n')
+            template.write('</pl-submission-panel>\n')
+        elif question['question_type'] == 'multiple_answers_question':
             template.write('<pl-question-panel>\n<p>\n')
             template.write(question['question_text'] + '\n')
             template.write('</p>\n</pl-question-panel>\n')
@@ -153,7 +170,15 @@ for question in questions.values():
                 template.write(f'<pl-number-input answers-name="value" correct-answer="{answer["approximate"]}" comparison="sigfig" digits="{answer["precision"]}"></pl-number-input>\n')
             else:
                 print(f'Invalid numerical answer type: {answer["numerical_answer_type"]}')
-                template.write(f'<pl-number-input answers-name="value"></pl-integer-input>\n')
+                template.write(f'<pl-number-input answers-name="value"></pl-number-input>\n')
+        elif question['question_type'] == 'calculated_question':
+            for variable in question['variables']:
+                question['question_text'] = question['question_text'].replace(f'[{variable["name"]}]','{{params.' + variable["name"] + '}}')
+            template.write('<pl-question-panel>\n<p>\n')
+            template.write(question['question_text'] + '\n')
+            template.write('</p>\n</pl-question-panel>\n')
+            answers_name = question['formulas'][-1]['formula'].split('=')[0].strip()
+            template.write(f'<pl-number-input answers-name="{answers_name}" comparison="decdig" digits="{question["formula_decimal_places"]}"></pl-number-input>\n')
         elif question['question_type'] == 'short_answer_question':
             template.write('<pl-question-panel>\n<p>\n')
             template.write(question['question_text'] + '\n')
@@ -202,6 +227,23 @@ for question in questions.values():
             elif question['neutral_comments']:
                 template.write(question['neutral_comments'] + '\n')
             template.write('</p>\n</pl-answer-panel>\n')
+
+    if question['question_type'] == 'calculated_question':
+        with open(os.path.join(question_dir, 'server.py'), 'w') as script:
+            script.write('import random\n\n')
+            script.write('def generate(data):\n')
+            for variable in question['variables']:
+                if not variable.get('scale', False):
+                    script.write(f'    {variable["name"]} = random.randint({int(variable["min"])}, {int(variable["max"])})\n')
+                else:
+                    multip = 10 ** variable["scale"]
+                    script.write(f'    {variable["name"]} = random.randint({int(variable["min"] * multip)}, {int(variable["max"] * multip)}) / {multip}\n')
+            for formula in question['formulas']:
+                script.write(f'    {formula["formula"]}\n')
+            for variable in question['variables']:
+                script.write(f'    data["params"]["{variable["name"]}"] = {variable["name"]}\n')
+            answer = question["formulas"][-1]['formula'].split('=')[0].strip()
+            script.write(f'    data["correct_answers"]["{answer}"] = {answer}\n')
 
 with open(os.path.join(quiz_name, 'infoAssessment.json'), 'w') as assessment:
     json.dump(pl_quiz, assessment, indent=4)
