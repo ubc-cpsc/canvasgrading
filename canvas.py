@@ -310,10 +310,11 @@ class Quiz(Canvas):
         """ docstring """
         submissions = {}
         quiz_submissions = []
-        include = ''
-        if include_user:       include += 'include[]=user&'
-        if include_submission: include += 'include[]=submission&'
-        if include_history:    include += 'include[]=submission_history&'
+        include = ''.join([
+            'include[]=user&' if include_user else '',
+            'include[]=submission&' if include_submission else '',
+            'include[]=submission_history&' if include_history else '',
+            ])
         for response in self.request('%s/submissions?%s'
                                      % (self.url_prefix, include), debug):
             quiz_submissions += [qs for qs in response['quiz_submissions']
