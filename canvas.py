@@ -82,8 +82,8 @@ class Canvas:
     def courses(self):
         """ docstring """
         courses = []
-        for list in self.request('/courses?include[]=term&state[]=available'):
-            courses.extend(list)
+        for result in self.request('/courses?include[]=term&state[]=available'):
+            courses.extend(result)
         return courses
 
     def course(self, course_id, prompt_if_needed=False):
@@ -122,8 +122,8 @@ class Course(Canvas):
     def quizzes(self):
         """ docstring """
         quizzes = []
-        for list in self.request('%s/quizzes' % self.url_prefix):
-            quizzes += [Quiz(self, quiz) for quiz in list
+        for result in self.request('%s/quizzes' % self.url_prefix):
+            quizzes += [Quiz(self, quiz) for quiz in result
                         if quiz['quiz_type'] == 'assignment']
         return quizzes
 
@@ -144,8 +144,8 @@ class Course(Canvas):
     def assignments(self):
         """ docstring """
         assignments = []
-        for list in self.request('%s/assignments' % self.url_prefix):
-            assignments += [Assignment(self, a) for a in list if
+        for result in self.request('%s/assignments' % self.url_prefix):
+            assignments += [Assignment(self, a) for a in result if
                             'online_quiz' not in a['submission_types']]
         return assignments
 
@@ -175,9 +175,9 @@ class Course(Canvas):
     def students(self):
         """ docstring """
         students = {}
-        for list in self.request('%s/users?enrollment_type=student' %
-                                 self.url_prefix):
-            for s in list:
+        for result in self.request('%s/users?enrollment_type=student' %
+                                   self.url_prefix):
+            for s in result:
                 students[s['sis_user_id'] if s['sis_user_id'] else '0'] = s
         return students
 
@@ -234,14 +234,14 @@ class Quiz(Canvas):
             return self.post('%s/groups' % self.url_prefix,
                              {'quiz_groups': [group_data]})
 
-    def questions(self, filter=None):
+    def questions(self, qfilter=None):
         """ docstring """
         questions = {}
         groups = {}
         i = 1
-        for list in self.request('%s/questions?per_page=100' %
-                                 self.url_prefix):
-            for question in list:
+        for result in self.request('%s/questions?per_page=100' %
+                                   self.url_prefix):
+            for question in result:
                 if question['quiz_group_id'] in groups:
                     group = groups[question['quiz_group_id']]
                 else:
@@ -254,7 +254,7 @@ class Quiz(Canvas):
                 else:
                     question['position'] = i
                     i += 1
-                if not filter or filter(question['id']):
+                if not qfilter or qfilter(question['id']):
                     questions[question['id']] = question
         if None in groups:
             del groups[None]
