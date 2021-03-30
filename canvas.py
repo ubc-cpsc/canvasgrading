@@ -42,7 +42,8 @@ class Canvas:
                                 headers=self.token_header)
         while True:
             response.raise_for_status()
-            if (debug): print(response.text)
+            if debug:
+                print(response.text)
             retval.append(response.json())
             if stop_at_first or 'current' not in response.links or \
                'last' not in response.links or \
@@ -57,7 +58,8 @@ class Canvas:
         response = requests.put(MAIN_URL + url, json=data,
                                 headers=self.token_header)
         response.raise_for_status()
-        if response.status_code == 204: return None
+        if response.status_code == 204:
+            return None
         return response.json()
 
     def post(self, url, data):
@@ -65,14 +67,16 @@ class Canvas:
         response = requests.post(MAIN_URL + url, json=data,
                                  headers=self.token_header)
         response.raise_for_status()
-        if response.status_code == 204: return None
+        if response.status_code == 204:
+            return None
         return response.json()
 
     def delete(self, url):
         """ docstring """
         response = requests.delete(MAIN_URL + url, headers=self.token_header)
         response.raise_for_status()
-        if response.status_code == 204: return None
+        if response.status_code == 204:
+            return None
         return response.json()
 
     def courses(self):
@@ -212,7 +216,8 @@ class Quiz(Canvas):
 
     def question_group(self, group_id):
         """ docstring """
-        if group_id == None: return None
+        if group_id is None:
+            return None
         for group in self.request('%s/groups/%d'
                                   % (self.url_prefix, group_id)):
             return group
@@ -251,7 +256,8 @@ class Quiz(Canvas):
                     i += 1
                 if not filter or filter(question['id']):
                     questions[question['id']] = question
-        if None in groups: del groups[None]
+        if None in groups:
+            del groups[None]
         for g in groups.values():
             for q in [q for q in questions.values()
                       if q['position'] >= g['position'] and
