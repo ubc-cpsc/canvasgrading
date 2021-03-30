@@ -35,7 +35,7 @@ class Canvas:
                                 help="Assignment ID")
 
 
-    def request(self, request, stopAtFirst=False, debug=False):
+    def request(self, request, stop_at_first=False, debug=False):
         """ docstring """
         retval = []
         response = requests.get(MAIN_URL + request,
@@ -44,7 +44,7 @@ class Canvas:
             response.raise_for_status()
             if (debug): print(response.text)
             retval.append(response.json())
-            if stopAtFirst or 'current' not in response.links or \
+            if stop_at_first or 'current' not in response.links or \
                'last' not in response.links or \
                response.links['current']['url'] == response.links['last']['url']:
                 break
