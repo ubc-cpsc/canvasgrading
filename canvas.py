@@ -1,11 +1,11 @@
-import requests
-import json
 import argparse
 from collections import OrderedDict
+import requests
 
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
 
 class Canvas:
+    """ Canvas """
     def __init__(self, token=None, args=None):
         if args and args.canvas_token_file:
             token = args.canvas_token_file.read().strip()
@@ -17,6 +17,7 @@ class Canvas:
 
     @staticmethod
     def add_arguments(parser, course=True, quiz=False, assignment=False):
+        """ docstring """
         group = parser.add_mutually_exclusive_group(required=True)
         group.add_argument("-f", "--canvas-token-file",
                            type=argparse.FileType('r'),
@@ -35,6 +36,7 @@ class Canvas:
 
 
     def request(self, request, stopAtFirst=False, debug=False):
+        """ docstring """
         retval = []
         response = requests.get(MAIN_URL + request,
                                 headers=self.token_header)
@@ -51,6 +53,7 @@ class Canvas:
         return retval
 
     def put(self, url, data):
+        """ docstring """
         response = requests.put(MAIN_URL + url, json=data,
                                 headers=self.token_header)
         response.raise_for_status()
@@ -58,6 +61,7 @@ class Canvas:
         return response.json()
 
     def post(self, url, data):
+        """ docstring """
         response = requests.post(MAIN_URL + url, json=data,
                                  headers=self.token_header)
         response.raise_for_status()
@@ -65,18 +69,21 @@ class Canvas:
         return response.json()
 
     def delete(self, url):
+        """ docstring """
         response = requests.delete(MAIN_URL + url, headers=self.token_header)
         response.raise_for_status()
         if response.status_code == 204: return None
         return response.json()
 
     def courses(self):
+        """ docstring """
         courses = []
         for list in self.request('/courses?include[]=term&state[]=available'):
             courses.extend(list)
         return courses
 
     def course(self, course_id, prompt_if_needed=False):
+        """ docstring """
         if course_id:
             for course in self.request('/courses/%d?include[]=term' %
                                        course_id):
@@ -92,10 +99,12 @@ class Canvas:
         return None
 
     def file(self, file_id):
+        """ docstring """
         for file in self.request('/files/%s' % file_id):
             return file
 
 class Course(Canvas):
+    """ Course """
 
     def __init__(self, canvas, course_data):
         super().__init__(canvas.token)
@@ -107,6 +116,7 @@ class Course(Canvas):
         return self.data[index]
 
     def quizzes(self):
+        """ docstring """
         quizzes = []
         for list in self.request('%s/quizzes' % self.url_prefix):
             quizzes += [Quiz(self, quiz) for quiz in list
@@ -114,6 +124,7 @@ class Course(Canvas):
         return quizzes
 
     def quiz(self, quiz_id, prompt_if_needed=False):
+        """ docstring """
         if quiz_id:
             for quiz in self.request('%s/quizzes/%d' %
                                      (self.url_prefix, quiz_id)):
@@ -127,6 +138,7 @@ class Course(Canvas):
         return None
 
     def assignments(self):
+        """ docstring """
         assignments = []
         for list in self.request('%s/assignments' % self.url_prefix):
             assignments += [Assignment(self, a) for a in list if
@@ -134,6 +146,7 @@ class Course(Canvas):
         return assignments
 
     def assignment(self, assignment_id, prompt_if_needed=False):
+        """ docstring """
         if assignment_id:
             for assignment in self.request('%s/assignments/%d' %
                                            (self.url_prefix, assignment_id)):
@@ -148,6 +161,7 @@ class Course(Canvas):
         return None
 
     def rubrics(self):
+        """ docstring """
         full = []
         for l in self.request('%s/rubrics?include[]=associations' %
                               self.url_prefix):
@@ -155,6 +169,7 @@ class Course(Canvas):
         return full
 
     def students(self):
+        """ docstring """
         students = {}
         for list in self.request('%s/users?enrollment_type=student' %
                                  self.url_prefix):
@@ -163,6 +178,7 @@ class Course(Canvas):
         return students
 
 class Quiz(Canvas):
+    """ Quiz """
 
     def __init__(self, course, quiz_data):
         super().__init__(course.token)
@@ -178,9 +194,11 @@ class Quiz(Canvas):
         self.data[index] = value
 
     def items(self):
+        """ docstring """
         return self.data.items()
 
     def update_quiz(self, data=None):
+        """ docstring """
         if data:
             self.data = data
         if self.id:
@@ -193,6 +211,7 @@ class Quiz(Canvas):
         return self
 
     def question_group(self, group_id):
+        """ docstring """
         if group_id == None: return None
         for group in self.request('%s/groups/%d'
                                   % (self.url_prefix, group_id)):
@@ -201,6 +220,7 @@ class Quiz(Canvas):
 
     # If group_id is None, creates a new one
     def update_question_group(self, group_id, group_data):
+        """ docstring """
         if group_id:
             return self.put('%s/groups/%d' %
                             (self.url_prefix, group_id),
@@ -210,6 +230,7 @@ class Quiz(Canvas):
                              {'quiz_groups': [group_data]})
 
     def questions(self, filter=None):
+        """ docstring """
         questions = {}
         groups = {}
         i = 1
@@ -242,6 +263,7 @@ class Quiz(Canvas):
                                    key=lambda t: t[1]['position'])))
 
     def update_question(self, question_id, question):
+        """ docstring """
         # Reformat question data to account for different format
         # between input and output in Canvas API
         if 'answers' in question:
@@ -268,15 +290,18 @@ class Quiz(Canvas):
                              {'question': question})
 
     def delete_question(self, question_id):
+        """ docstring """
         return self.delete('%s/questions/%d' %
                            (self.url_prefix, question_id))
 
     def reorder_questions(self, items):
+        """ docstring """
         return self.post('%s/reorder' % self.url_prefix, {'order': items})
 
     def submissions(self, include_user=True,
                     include_submission=True, include_history=True,
                     include_settings_only=False, debug=False):
+        """ docstring """
         submissions = {}
         quiz_submissions = []
         include = ''
@@ -294,6 +319,7 @@ class Quiz(Canvas):
         return (quiz_submissions, submissions)
 
     def submission_questions(self, quiz_submission):
+        """ docstring """
         questions = {}
         for r in self.request('/quiz_submissions/%d/questions' %
                               quiz_submission['id']):
@@ -303,6 +329,7 @@ class Quiz(Canvas):
 
     def send_quiz_grade(self, quiz_submission,
                         question_id, points, comments=None):
+        """ docstring """
         self.put('%s/submissions/%d'
                  % (self.url_prefix, quiz_submission['id']),
                  {'quiz_submissions': [{
@@ -313,6 +340,7 @@ class Quiz(Canvas):
                  }]})
 
 class Assignment(Canvas):
+    """ Assignment """
 
     def __init__(self, course, assg_data):
         super().__init__(course.token)
@@ -325,6 +353,7 @@ class Assignment(Canvas):
         return self.data[index]
 
     def rubric(self):
+        """ docstring """
         for r in self.request('%s/rubrics/%d?include[]=associations' %
                               (self.course.url_prefix,
                                self.data['rubric_settings']['id'])):
@@ -332,6 +361,7 @@ class Assignment(Canvas):
         return None
 
     def update_rubric(self, rubric):
+        """ docstring """
         rubric_data = {
             'rubric': rubric,
             'rubric_association': {
@@ -344,5 +374,6 @@ class Assignment(Canvas):
         self.post('%s/rubrics' % self.course.url_prefix, rubric_data)
 
     def send_assig_grade(self, student, assessment):
+        """ docstring """
         self.put('%s/submissions/%d' % (self.url_prefix, student['id']),
                  {'rubric_assessment': assessment})
