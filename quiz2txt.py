@@ -13,11 +13,11 @@ import canvas
 def process_submission(qs):
     answers = {}
     num_attempts = 0
-    
+
     sub = submissions[qs['submission_id']]
     snum = sub['user']['sis_user_id']
     sub_questions = quiz.submission_questions(qs)
-            
+
     variation = {}
     for attempt in sub['submission_history']:
         if 'submission_data' in attempt:
@@ -61,7 +61,7 @@ def process_submission(qs):
                     if os.path.isfile(template_file):
                         zip.write(template_file, arcname=rubric_file)
                     else:
-                        print('Missing rubric file for question %d (question group %s)' % (question_id, question['quiz_group_id']) )
+                        print('Missing rubric file for question %d (question group %s)' % (question_id, question['quiz_group_id']))
 
 def flatten_list(l):
     if isinstance(l, list):
@@ -69,7 +69,7 @@ def flatten_list(l):
             l.remove(x)
             l.extend(x)
     return l
-    
+
 def question_included(qid):
     if args.not_question and qid in args.not_question:
         return False
@@ -108,7 +108,7 @@ print('Using quiz: %s' % (quiz['title']))
 
 if not args.output_prefix:
     args.output_prefix = re.sub(r'[^A-Za-z0-9-_]+', '', quiz['title'])
-    print('Using prefix: %s' % args.output_prefix);
+    print('Using prefix: %s' % args.output_prefix)
 
 print('Retrieving quiz submissions...')
 (quiz_submissions, submissions) = quiz.submissions(debug=args.debug)
@@ -126,7 +126,7 @@ if args.debug:
 num_exams = 0
 for qs in quiz_submissions:
     print("Exporting student %d out of %d..." %
-          (num_exams + 1, len(quiz_submissions)), end='\r');
+          (num_exams + 1, len(quiz_submissions)), end='\r')
     process_submission(qs)
     num_exams += 1
 

@@ -6,7 +6,7 @@ from collections import OrderedDict
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
 
 class Canvas:
-    def __init__(self, token = None, args = None):
+    def __init__(self, token=None, args=None):
         if args and args.canvas_token_file:
             token = args.canvas_token_file.read().strip()
             args.canvas_token_file.close()
@@ -33,11 +33,11 @@ class Canvas:
             parser.add_argument("-a", "--assignment", type=int,
                                 help="Assignment ID")
 
-        
-    def request(self, request, stopAtFirst = False, debug = False):
+
+    def request(self, request, stopAtFirst=False, debug=False):
         retval = []
         response = requests.get(MAIN_URL + request,
-                                headers = self.token_header)
+                                headers=self.token_header)
         while True:
             response.raise_for_status()
             if (debug): print(response.text)
@@ -47,25 +47,25 @@ class Canvas:
                response.links['current']['url'] == response.links['last']['url']:
                 break
             response = requests.get(response.links['next']['url'],
-                                    headers = self.token_header)
+                                    headers=self.token_header)
         return retval
 
     def put(self, url, data):
-        response = requests.put(MAIN_URL + url, json = data,
-                                headers = self.token_header)
+        response = requests.put(MAIN_URL + url, json=data,
+                                headers=self.token_header)
         response.raise_for_status()
         if response.status_code == 204: return None
         return response.json()
 
     def post(self, url, data):
-        response = requests.post(MAIN_URL + url, json = data,
-                                 headers = self.token_header)
+        response = requests.post(MAIN_URL + url, json=data,
+                                 headers=self.token_header)
         response.raise_for_status()
         if response.status_code == 204: return None
         return response.json()
 
     def delete(self, url):
-        response = requests.delete(MAIN_URL + url, headers = self.token_header)
+        response = requests.delete(MAIN_URL + url, headers=self.token_header)
         response.raise_for_status()
         if response.status_code == 204: return None
         return response.json()
@@ -82,21 +82,21 @@ class Canvas:
                                        course_id):
                 return Course(self, course)
         if prompt_if_needed:
-                courses = self.courses()
-                for index, course in enumerate(courses):
-                    print("%2d: %7d - %10s / %s" %
-                          (index, course['id'], course.get('term', {}).get('name', 'NO TERM'),
-                           course.get('course_code', 'UNKNOWN COURSE')))
-                course_index = int(input('Which course? '))
-                return Course(self, courses[course_index])
+            courses = self.courses()
+            for index, course in enumerate(courses):
+                print("%2d: %7d - %10s / %s" %
+                      (index, course['id'], course.get('term', {}).get('name', 'NO TERM'),
+                       course.get('course_code', 'UNKNOWN COURSE')))
+            course_index = int(input('Which course? '))
+            return Course(self, courses[course_index])
         return None
 
     def file(self, file_id):
         for file in self.request('/files/%s' % file_id):
             return file
-    
+
 class Course(Canvas):
-    
+
     def __init__(self, canvas, course_data):
         super().__init__(canvas.token)
         self.data = course_data
@@ -125,14 +125,14 @@ class Course(Canvas):
             quiz_index = int(input('Which quiz? '))
             return quizzes[quiz_index]
         return None
-    
+
     def assignments(self):
         assignments = []
         for list in self.request('%s/assignments' % self.url_prefix):
             assignments += [Assignment(self, a) for a in list if
                             'online_quiz' not in a['submission_types']]
         return assignments
-        
+
     def assignment(self, assignment_id, prompt_if_needed=False):
         if assignment_id:
             for assignment in self.request('%s/assignments/%d' %
@@ -153,7 +153,7 @@ class Course(Canvas):
                               self.url_prefix):
             full += l
         return full
-    
+
     def students(self):
         students = {}
         for list in self.request('%s/users?enrollment_type=student' %
@@ -163,7 +163,7 @@ class Course(Canvas):
         return students
 
 class Quiz(Canvas):
-    
+
     def __init__(self, course, quiz_data):
         super().__init__(course.token)
         self.course = course
@@ -180,14 +180,14 @@ class Quiz(Canvas):
     def items(self):
         return self.data.items()
 
-    def update_quiz(self, data = None):
+    def update_quiz(self, data=None):
         if data:
             self.data = data
         if self.id:
-            self.data = self.put(self.url_prefix, { 'quiz': self.data } )
+            self.data = self.put(self.url_prefix, {'quiz': self.data})
         else:
             self.data = self.post('%s/quizzes' % self.course.url_prefix,
-                                  { 'quiz': self.data } )
+                                  {'quiz': self.data})
         self.id = self.data['id']
         self.url_prefix = '%s/quizzes/%d' % (self.course.url_prefix, self.id)
         return self
@@ -204,11 +204,11 @@ class Quiz(Canvas):
         if group_id:
             return self.put('%s/groups/%d' %
                             (self.url_prefix, group_id),
-                            { 'quiz_groups': [group_data] } )
+                            {'quiz_groups': [group_data]})
         else:
             return self.post('%s/groups' % self.url_prefix,
-                             { 'quiz_groups': [group_data] } )
-    
+                             {'quiz_groups': [group_data]})
+
     def questions(self, filter=None):
         questions = {}
         groups = {}
@@ -221,7 +221,7 @@ class Quiz(Canvas):
                 else:
                     group = self.question_group(question['quiz_group_id'])
                     groups[question['quiz_group_id']] = group
-                    
+
                 if group:
                     question['points_possible'] = group['question_points']
                     question['position'] = group['position']
@@ -237,9 +237,9 @@ class Quiz(Canvas):
                       q['quiz_group_id'] is None]:
                 q['position'] += 1
         return (OrderedDict(sorted(questions.items(),
-                                   key=lambda t:t[1]['position'])),
+                                   key=lambda t: t[1]['position'])),
                 OrderedDict(sorted(groups.items(),
-                                   key=lambda t:t[1]['position'])))
+                                   key=lambda t: t[1]['position'])))
 
     def update_question(self, question_id, question):
         # Reformat question data to account for different format
@@ -262,18 +262,18 @@ class Quiz(Canvas):
         if question_id:
             return self.put('%s/questions/%d' %
                             (self.url_prefix, question_id),
-                            { 'question': question } )
+                            {'question': question})
         else:
             return self.post('%s/questions' % self.url_prefix,
-                             { 'question': question } )
-    
+                             {'question': question})
+
     def delete_question(self, question_id):
         return self.delete('%s/questions/%d' %
                            (self.url_prefix, question_id))
-    
+
     def reorder_questions(self, items):
-        return self.post('%s/reorder' % self.url_prefix, { 'order': items } )
-    
+        return self.post('%s/reorder' % self.url_prefix, {'order': items})
+
     def submissions(self, include_user=True,
                     include_submission=True, include_history=True,
                     include_settings_only=False, debug=False):
@@ -307,20 +307,20 @@ class Quiz(Canvas):
                  % (self.url_prefix, quiz_submission['id']),
                  {'quiz_submissions': [{
                      'attempt': quiz_submission['attempt'],
-                     'questions': { question_id: {'score': points,
-                                                  'comment': comments}
-                     }
+                     'questions': {question_id: {'score': points,
+                                                 'comment': comments}
+                                  }
                  }]})
 
 class Assignment(Canvas):
-    
+
     def __init__(self, course, assg_data):
         super().__init__(course.token)
         self.course = course
         self.data = assg_data
         self.id = assg_data['id']
         self.url_prefix = '%s/assignments/%d' % (course.url_prefix, self.id)
-    
+
     def __getitem__(self, index):
         return self.data[index]
 
@@ -345,5 +345,4 @@ class Assignment(Canvas):
 
     def send_assig_grade(self, student, assessment):
         self.put('%s/submissions/%d' % (self.url_prefix, student['id']),
-                 { 'rubric_assessment': assessment })
-
+                 {'rubric_assessment': assessment})

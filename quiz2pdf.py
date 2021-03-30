@@ -41,7 +41,7 @@ def save_raw_answer(answer, identification):
         answer['text'] += '</ul></div>'
 
 
-def write_exam_file(htmlfile, questions, qs = None):
+def write_exam_file(htmlfile, questions, qs=None):
     acct = ''
     snum = ''
     sname = ''
@@ -122,7 +122,7 @@ def write_exam_file(htmlfile, questions, qs = None):
         answer = None
         answer_text = ''
         points = ''
-        
+
         if question_id in answers:
             answer = answers[question_id]
             answer_text = answer['text'] if 'text' in answer else ''
@@ -154,7 +154,7 @@ def write_exam_file(htmlfile, questions, qs = None):
                 else:
                     choice = 'X' if answer != None and 'answer_id' in answer and pa['id'] == answer['answer_id'] else ''
                 answer_text += '<div class="mc-item"><span class="mc-item-space"><span>&nbsp;%s&nbsp;</span></span>&nbsp;&nbsp;<span class="mc-item-text">%s</span></div>' % (choice, pa['text'])
-            
+
         elif question_type == 'fill_in_multiple_blanks_question' or \
              question_type == 'multiple_dropdowns_question':
             answer_text = '<table class="multiple-blanks-table">'
@@ -170,7 +170,7 @@ def write_exam_file(htmlfile, questions, qs = None):
                     choice = dd_answers[choice]
                 answer_text += '<tr><td class="multiple-blanks-token">%s</td><td>=></td><td class=multiple-blanks-answer>%s</td></tr>' % (token, choice)
             answer_text += '</table>'
-                
+
         elif question_type == 'matching_question':
             answer_text = '<table class="multiple-blanks-table">'
             matches = {}
@@ -181,12 +181,12 @@ def write_exam_file(htmlfile, questions, qs = None):
                 choice = matches[answer[key]] if answer != None and key in answer and answer[key] in matches else ''
                 answer_text += '<tr><td class="multiple-blanks-token">%s</td><td>=></td><td class="multiple-blanks-answer">%s</td></tr>' % (pa['text'], choice)
             answer_text += '</table>'
-        
+
         elif question_type == 'file_upload_question':
             pass # This is handled in the processing of history above.
         elif question_type != None:
             raise ValueError('Invalid question type: "%s"' % question_type)
-        
+
         htmlfile.write('''<div class="question-preamble question-%d"></div>
         <div class="question-container question-%d">
         <h2 class="question-title">Question %d [%s]:</h2>
@@ -210,7 +210,7 @@ def flatten_list(l):
             l.remove(x)
             l.extend(x)
     return l
-    
+
 def end_file(htmlfile):
     htmlfile.write('</body>\n</html>')
     htmlfile.close()
@@ -253,7 +253,7 @@ htmlfile_list = []
 
 if args.classlist:
     print('Reading classlist...')
-    
+
     with open(args.classlist, 'r', newline='') as file:
         reader = csv.DictReader(file)
         if 'SNUM' not in reader.fieldnames:
@@ -273,7 +273,7 @@ print('Using quiz: %s' % (quiz['title']))
 
 if not args.output_prefix:
     args.output_prefix = re.sub(r'[^A-Za-z0-9-_]+', '', quiz['title'])
-    print('Using prefix: %s' % args.output_prefix);
+    print('Using prefix: %s' % args.output_prefix)
 
 # Reading questions
 print('Retrieving quiz questions...')
@@ -288,10 +288,10 @@ else:
 
 print('Generating HTML files...')
 
-file_no = 1;
+file_no = 1
 template_file = start_file(args.output_prefix + '_template.html')
 if not args.template_only:
-    exams_file    = start_file(args.output_prefix + '_exams_%d.html' % file_no)
+    exams_file = start_file(args.output_prefix + '_exams_%d.html' % file_no)
     rawanswers_file = zipfile.ZipFile(args.output_prefix + '_raw_answers.zip', 'w')
 
 write_exam_file(template_file, questions)
@@ -308,7 +308,7 @@ if args.debug:
 num_exams = 0
 for qs in quiz_submissions:
     print("Exporting student %d out of %d..." %
-          (num_exams + 1, len(quiz_submissions)), end='\r');
+          (num_exams + 1, len(quiz_submissions)), end='\r')
     write_exam_file(exams_file, questions, qs)
     num_exams += 1
     if num_exams % 20 == 0:
@@ -322,12 +322,12 @@ if not args.template_only:
     rawanswers_file.close()
 
 print('\nConverting to PDF...')
-css = [weasyprint.CSS(path.join(path.dirname(__file__),'canvasquiz.css'))]
+css = [weasyprint.CSS(path.join(path.dirname(__file__), 'canvasquiz.css'))]
 if args.css:
     css.append(weasyprint.CSS(args.css))
 
 for file in htmlfile_list:
-    print(file + '...  ', end='\r');
+    print(file + '...  ', end='\r')
     weasyprint.HTML(filename=file).write_pdf(file + '.pdf', stylesheets=css)
 
 print('\nDONE. Created files:')
