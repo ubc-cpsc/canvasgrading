@@ -162,14 +162,29 @@ class Course(Canvas):
                 students[s['sis_user_id'] if s['sis_user_id'] else '0'] = s
         return students
 
-class Quiz(Canvas):
-    
-    def __init__(self, course, quiz_data):
+class CourseOwnedObject(Canvas):
+
+    # If not provided, the request_param_name defaults to the lower-cased class name.
+    def __init__(self, course, route_name, data, id_field='id', request_param_name = None):
         super().__init__(course.token)
         self.course = course
-        self.data = quiz_data
-        self.id = quiz_data['id']
-        self.url_prefix = '%s/quizzes/%d' % (course.url_prefix, self.id)
+        self.data = data
+        self.id_field = id_field
+        self.id = self.compute_id()
+        self.route_name = route_name
+        self.url_prefix = self.compute_url_prefix()
+        if not request_param_name:
+            request_param_name = type(self).__name__.lower()
+        self.request_param_name = request_param_name
+
+    def compute_id(self):
+        return self.data[self.id_field]
+
+    def compute_base_url(self):
+        return '%s/%s' % (self.course.url_prefix, self.route_name)
+    
+    def compute_url_prefix(self):
+        return '%s/%s' % (self.compute_base_url(), self.id)
 
     def __getitem__(self, index):
         return self.data[index]
@@ -180,17 +195,24 @@ class Quiz(Canvas):
     def items(self):
         return self.data.items()
 
-    def update_quiz(self, data = None):
+    def update(self, data = None):
         if data:
             self.data = data
         if self.id:
-            self.data = self.put(self.url_prefix, { 'quiz': self.data } )
+            self.data = self.put(self.url_prefix, { self.request_param_name: self.data } )
         else:
-            self.data = self.post('%s/quizzes' % self.course.url_prefix,
-                                  { 'quiz': self.data } )
-        self.id = self.data['id']
-        self.url_prefix = '%s/quizzes/%d' % (self.course.url_prefix, self.id)
+            self.data = self.post(self.compute_base_url(),
+                                  { self.route_name: self.data } )
+        self.id = self.compute_id()
+        self.url_prefix = self.compute_url_prefix()
         return self
+
+class Quiz(CourseOwnedObject):    
+    def __init__(self, course, quiz_data):
+        super().__init__(course, "quizzes", quiz_data)
+
+    def update_quiz(self, data=None):
+        self.update(data)
 
     def question_group(self, group_id):
         if group_id == None: return None
@@ -312,29 +334,13 @@ class Quiz(Canvas):
                      }
                  }]})
 
-class Assignment(Canvas):
+class Assignment(CourseOwnedObject):
     
     def __init__(self, course, assg_data):
-        super().__init__(course.token)
-        self.course = course
-        self.data = assg_data
-        self.id = assg_data['id']
-        self.url_prefix = '%s/assignments/%d' % (course.url_prefix, self.id)
-    
-    def __getitem__(self, index):
-        return self.data[index]
+        super().__init__(course, "assignments", assg_data)
 
-    def update_assignment(self, data = None):
-        if data:
-            self.data = data
-        if self.id:
-            self.data = self.put(self.url_prefix, { 'assignment': self.data } )
-        else:
-            self.data = self.post('%s/assignments' % self.course.url_prefix,
-                                  { 'assignment': self.data } )
-        self.id = self.data['id']
-        self.url_prefix = '%s/assignments/%d' % (self.course.url_prefix, self.id)
-        return self
+    def update_assignment(self, data=None):
+        self.update(data)
 
     def rubric(self):
         for r in self.request('%s/rubrics/%d?include[]=associations' %
@@ -359,3 +365,11 @@ class Assignment(Canvas):
         self.put('%s/submissions/%d' % (self.url_prefix, student['id']),
                  { 'rubric_assessment': assessment })
 
+
+class Page(CourseOwnedObject):
+    
+    def __init__(self, course, page_data):
+        super().__init__(course, "pages", page_data, id_field="url", request_param_name="wiki_page")
+
+    def update_page(self, data=None):
+        self.update(self, data)
