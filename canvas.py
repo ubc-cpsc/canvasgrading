@@ -324,6 +324,18 @@ class Assignment(Canvas):
     def __getitem__(self, index):
         return self.data[index]
 
+    def update_assignment(self, data = None):
+        if data:
+            self.data = data
+        if self.id:
+            self.data = self.put(self.url_prefix, { 'assignment': self.data } )
+        else:
+            self.data = self.post('%s/assignments' % self.course.url_prefix,
+                                  { 'assignment': self.data } )
+        self.id = self.data['id']
+        self.url_prefix = '%s/assignments/%d' % (self.course.url_prefix, self.id)
+        return self
+
     def rubric(self):
         for r in self.request('%s/rubrics/%d?include[]=associations' %
                               (self.course.url_prefix,
