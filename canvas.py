@@ -109,7 +109,7 @@ class Course(Canvas):
     def pages(self):
         pages = []
         for list in self.request('%s/pages' % self.url_prefix):
-            pages += [Page(self, page_date) for page_data in list]
+            pages += [Page(self, page_data) for page_data in list]
         return pages
 
     def quizzes(self):
