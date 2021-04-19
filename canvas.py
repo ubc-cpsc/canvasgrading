@@ -109,7 +109,19 @@ class Course(Canvas):
     def pages(self):
         pages = []
         for list in self.request('%s/pages' % self.url_prefix):
-            pages += [Page(self, page_data) for page_data in list]
+            # Per https://canvas.instructure.com/doc/api/pages.html#Page,
+            # the body is omitted from listing queries. So, we must query
+            # individually for each page.
+            for page_data in list:
+                new_page_datas = self.request('%s/pages/%s' % (self.url_prefix, page_data['url']))
+                if len(new_page_datas) == 1:
+                    pages.append(Page(self, new_page_datas[0]))
+                elif len(new_page_datas) == 0:
+                    # Page not found
+                    return None
+                else:
+                    # Too many pages found
+                    return None
         return pages
 
     def quizzes(self):
