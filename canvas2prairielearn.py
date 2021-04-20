@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#!/usr/bin/python3
 
 import os
 import re
@@ -101,7 +101,7 @@ for question in questions.values():
         'id': file_name_only(quiz['title']) + '/' + question_name,
         'points': question['points_possible']
     })
-    
+
     with open(os.path.join(question_dir, 'info.json'), 'w') as info:
         obj = {
             'uuid': str(uuid.uuid4()),
@@ -173,7 +173,7 @@ for question in questions.values():
                 template.write(f'<pl-number-input answers-name="value"></pl-number-input>\n')
         elif question['question_type'] == 'calculated_question':
             for variable in question['variables']:
-                question['question_text'] = question['question_text'].replace(f'[{variable["name"]}]','{{params.' + variable["name"] + '}}')
+                question['question_text'] = question['question_text'].replace(f'[{variable["name"]}]', '{{params.' + variable["name"] + '}}')
             template.write('<pl-question-panel>\n<p>\n')
             template.write(question['question_text'] + '\n')
             template.write('</p>\n</pl-question-panel>\n')
@@ -185,7 +185,7 @@ for question in questions.values():
             template.write('</p>\n</pl-question-panel>\n')
             answer = question['answers'][0]
             template.write(f'<pl-string-input answers-name="input" correct-answer="{answer["text"]}"></pl-string-input>\n')
-            
+
         elif question['question_type'] == 'fill_in_multiple_blanks_question':
             question_text = question['question_text']
             options = {}
@@ -195,9 +195,9 @@ for question in questions.values():
                 options[answer['blank_id']].append(answer)
             for answer_id, answers in options.items():
                 question_text.replace(f'[{answer_id}]', f'<pl-string-input answers-name="{answer_id}" correct-answer="{answers[0]["text"]}" remove-spaces="true" ignore-case="true" display="inline"></pl-string-input>')
-                
+
             template.write(question_text + '\n')
-            
+
         elif question['question_type'] == 'matching_question':
             template.write('<pl-question-panel>\n<p>\n')
             template.write(question['question_text'] + '\n')
@@ -212,7 +212,7 @@ for question in questions.values():
                     template.write(f'>{match["text"]}</pl-answer>')
                 template.write('</pl-dropdown> |\n')
             template.write('</markdown>\n')
-            
+
         else:
             print('Unsupported question type: ' + question['question_type'])
 
