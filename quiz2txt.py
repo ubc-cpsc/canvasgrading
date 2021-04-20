@@ -111,7 +111,7 @@ if not args.output_prefix:
     print('Using prefix: %s' % args.output_prefix)
 
 print('Retrieving quiz submissions...')
-(quiz_submissions, submissions) = quiz.submissions(debug=args.debug)
+(quiz_submissions, submissions) = quiz.submissions()
 
 print('\nGenerating files...')
 

@@ -7,6 +7,7 @@ MAIN_URL = 'https://canvas.ubc.ca/api/v1'
 class Canvas:
     """ Canvas """
     def __init__(self, token=None, args=None):
+        self.debug = args.debug if args else False
         if args and args.canvas_token_file:
             token = args.canvas_token_file.read().strip()
             args.canvas_token_file.close()
@@ -34,13 +35,13 @@ class Canvas:
                                 help="Assignment ID")
 
 
-    def request(self, request, stop_at_first=False, debug=False):
+    def request(self, request, stop_at_first=False):
         """ docstring """
         retval = []
         response = requests.get(MAIN_URL + request, headers=self.token_header)
         while True:
             response.raise_for_status()
-            if debug:
+            if self.debug:
                 print(response.text)
             retval.append(response.json())
             if (stop_at_first or
@@ -280,7 +281,7 @@ class Quiz(Canvas):
 
     def submissions(self, include_user=True,
                     include_submission=True, include_history=True,
-                    include_settings_only=False, debug=False):
+                    include_settings_only=False):
         """ docstring """
         submissions = {}
         quiz_submissions = []
@@ -289,7 +290,7 @@ class Quiz(Canvas):
             'include[]=submission&' if include_submission else '',
             'include[]=submission_history&' if include_history else '',
             ])
-        for response in self.request(f'{self.url_prefix}/submissions?{include}', debug):
+        for response in self.request(f'{self.url_prefix}/submissions?{include}'):
             quiz_submissions += [
                 qs for qs in response['quiz_submissions']
                 if include_settings_only or qs['workflow_state'] != 'settings_only'

@@ -284,7 +284,7 @@ if args.template_only:
     quiz_submissions = []
     submissions = {}
 else:
-    (quiz_submissions, submissions) = quiz.submissions(debug=args.debug)
+    (quiz_submissions, submissions) = quiz.submissions()
 
 print('Generating HTML files...')
 
