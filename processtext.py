@@ -11,30 +11,48 @@ class BetterErrorParser(argparse.ArgumentParser):
         sys.exit(2)
 
 
-class ObjectType:
-    def __init__(self, type_name, text_fields, title_field=None):
-        self.type_name = type_name
-        self.text_fields = text_fields if isinstance(text_fields, list) else [text_fields]
-        self.title_field = title_field
+def update_objects(objects, type_name, update_fn):
+    print("Processing %s objects" % type_name)
+    for obj in objects:
+        update_fn(obj)
 
-    def process_one(self, obj, compiled_regex, repl):
+def make_regex_repl_text_process(regex, repl):
+    compiled_regex = re.compile(regex)
+    def text_process(text):
+        (new_text, count) = compiled_regex.subn(repl, text, count=0)
+        return new_text if count > 0 else None
+    return text_process
+
+# text_process_fn takes text (as a string) and returns either None if no changes
+# are to be made or a new block of text (as a string).
+#
+# text_fields is either a single string naming a text field to process or a list of
+# such strings
+#
+# title_field is either None (for no title field) or a string naming the title field
+# (only for logging). A field can be both title_field and one of the text_fields.
+def make_update_text(text_process_fn, text_fields, title_field=None):
+    text_fields = text_fields[:] if isinstance(text_fields, list) else[text_fields]
+    def update_text(obj):
         print()
         print("---------------------------------------------------------------")
-        if self.title_field:
-            print("Processing object: %s" % obj[self.title_field])
+        if title_field:
+            print("Processing object: %s" % obj[title_field])
         else:
             print("Processing next object")
         
-        for text_field in self.text_fields:
+        for text_field in text_fields:
             update_needed = False
 
             print("Processing text field: %s" % text_field)
             old_value = obj[text_field]
-            (new_value, count) = compiled_regex.subn(repl, old_value, count=0)
-            if count > 0:
+            new_value = text_process_fn(old_value)
+            if new_value is None:
+                print("No changes made.")
+            else:
                 update_needed = True
                 obj[text_field] = new_value
-                print("Replaced %s matches" % count)
+                print("Changes made.")
                 print("Old value:")
                 print(old_value)
                 print()
@@ -43,26 +61,17 @@ class ObjectType:
                 print(new_value)
                 print()
                 print()
-            else:
-                print("No replacements made.")
         
         if update_needed:
             print("Making update on Canvas...")
             obj.update()
             print("Update complete.")
 
-        if self.title_field:
-            print("Done processing object: %s" % obj[self.title_field])
+        if title_field:
+            print("Done processing object: %s" % obj[title_field])
         else:
             print("Done processing object")
-
-    def process(self, objects, compiled_regex, repl):
-        print("Processing %s objects" % self.type_name)
-        print("Title field is %s" % (self.title_field if self.title_field else "not present"))
-        print("Text fields: %s" % (", ".join(self.text_fields)))
-
-        for obj in objects:
-            self.process_one(obj, compiled_regex, repl)
+    return update_text
 
 parser = BetterErrorParser()
 canvas.Canvas.add_arguments(parser)
@@ -82,18 +91,23 @@ parser.add_argument("regex", help="The regular expression (using Python's re syn
 parser.add_argument("repl", help="The replacement string (using Python's syntax from re.sub) with which to replace regex.")
 args = parser.parse_args()
 
+regex = args.regex
+repl = args.repl
+
 process_assns = args.assignments or args.all
 process_quizzes = args.quizzes or args.all
 process_pages = args.pages or args.all
 if not (process_assns or process_pages or process_quizzes):
     parser.error("You must use a flag to indicate processing of at least one type.")
 
-assn_type = ObjectType("assignment", "description", "name")
-page_type = ObjectType("page", "body", "url")
-quiz_type = ObjectType("quiz", "description", "title")
+std_text_process = make_regex_repl_text_process(regex, repl)
+update_assn_fn = make_update_text(std_text_process, "description", "name")
+update_page_fn = make_update_text(std_text_process, "body", "url")
 
-compiled_regex = re.compile(args.regex)
-repl = args.repl
+# TODO: replace std_text_process with one that also accesses the questions (and answers?)
+# and updates them.
+update_quiz_fn = make_update_text(std_text_process, "description", "title")
+
 
 canvas = canvas.Canvas(args=args)
 
@@ -113,19 +127,19 @@ if process_assns:
     print("Fetching assignments from Canvas...")
     assignments = course.assignments()
     print("Done fetching assignments from Canvas.")
-    assn_type.process(assignments, compiled_regex, repl)
+    update_objects(assignments, "assignment", update_assn_fn)
 
 if process_pages:
     print("Fetching pages from Canvas...")
     pages = course.pages()
     print("Done fetching pages from Canvas.")
-    page_type.process(pages, compiled_regex, repl)
+    update_objects(pages, "page", update_page_fn)
 
 if process_quizzes:
     print("Fetching quizzes from Canvas...")
     quizzes = course.quizzes()
     print("Done fetching quizzes from Canvas.")
-    quiz_type.process(quizzes, compiled_regex, repl)
+    update_objects(quizzes, "quiz", update_quiz_fn)
 
 
 
