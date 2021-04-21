@@ -60,8 +60,6 @@ parser.add_argument("-s", "--strip", action='store_true',
                     help="Strip from output JSON values that cannot be pushed back in updates.")
 parser.add_argument("-a", "--alternative-format", action='store_true',
                     help="Use alternative format for answers in some types of questions.")
-parser.add_argument("-d", "--debug", help="Enable debugging mode",
-                    action='store_true')
 args = parser.parse_args()
 canvas = canvas.Canvas(args=args)
 

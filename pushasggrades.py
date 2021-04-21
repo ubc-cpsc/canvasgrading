@@ -16,8 +16,6 @@ parser = argparse.ArgumentParser()
 canvas.Canvas.add_arguments(parser, assignment=True)
 parser.add_argument("-p", "--parts", help="CSV file with assignment parts")
 parser.add_argument("-m", "--marks", help="CSV file with assignment marks")
-parser.add_argument("-d", "--debug", help="Enable debugging mode",
-                    action='store_true')
 args = parser.parse_args()
 canvas = canvas.Canvas(args=args)
 

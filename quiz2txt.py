@@ -83,8 +83,6 @@ group.add_argument("--only-question", action='extend', nargs='+', type=int, meta
                    help="Questions to include")
 group.add_argument("--not-question", action='extend', nargs='+', type=int, metavar="QUESTIONID",
                    help="Questions to exclude")
-parser.add_argument("-d", "--debug", action='store_true',
-                    help="Enable debugging mode")
 args = parser.parse_args()
 
 flatten_list(args.only_question)

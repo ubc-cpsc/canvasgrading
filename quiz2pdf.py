@@ -239,8 +239,6 @@ parser.add_argument("--css",
                     help="Additional CSS file to use in PDF creation.")
 parser.add_argument("--template-only", action='store_true',
                     help="Create only the template, without students.")
-parser.add_argument("-d", "--debug", help="Enable debugging mode",
-                    action='store_true')
 args = parser.parse_args()
 
 flatten_list(args.only_question)

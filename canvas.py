@@ -19,6 +19,8 @@ class Canvas:
     @staticmethod
     def add_arguments(parser, course=True, quiz=False, assignment=False):
         """ docstring """
+        parser.add_argument("-d", "--debug", action='store_true',
+                            help="Enable debugging mode")
         group = parser.add_mutually_exclusive_group(required=True)
         group.add_argument("-f", "--canvas-token-file", type=argparse.FileType('r'),
                            help="File containing the Canvas token used for authentication")

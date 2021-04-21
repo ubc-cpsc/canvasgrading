@@ -25,8 +25,6 @@ parser.add_argument("-n", "--assessment-number", default="",
                     help="Assessment set to assign this assessment to")
 parser.add_argument("--topic", default="None",
                     help="Assessment set to assign this assessment to")
-parser.add_argument("-d", "--debug", help="Enable debugging mode",
-                    action='store_true')
 args = parser.parse_args()
 canvas = canvas.Canvas(args=args)
 

@@ -19,8 +19,6 @@ parser.add_argument("--practice", action='store_true',
                     help="Change quiz to be a practice quiz")
 parser.add_argument("--published", action='store_true',
                     help="By default, new quiz is set to unpublished. This option sets it as published.")
-parser.add_argument("-d", "--debug", help="Enable debugging mode",
-                    action='store_true')
 args = parser.parse_args()
 
 canvas = canvas.Canvas(args=args)
