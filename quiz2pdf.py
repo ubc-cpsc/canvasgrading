@@ -204,13 +204,6 @@ def write_exam_file(htmlfile, questions, qs=None):
                answer_text))
         qn += 1
 
-def flatten_list(l):
-    if isinstance(l, list):
-        for x in [x for x in l if isinstance(x, list)]:
-            l.remove(x)
-            l.extend(x)
-    return l
-
 def end_file(htmlfile):
     htmlfile.write('</body>\n</html>')
     htmlfile.close()
@@ -231,18 +224,15 @@ parser.add_argument("-l", "--classlist",
 parser.add_argument("-p", "--output-prefix",
                     help="Path/prefix for output files")
 group = parser.add_mutually_exclusive_group()
-group.add_argument("--only-question", action='append', nargs='+', type=int,
+group.add_argument("--only-question", action='extend', nargs='+', type=int,
                    metavar="QUESTIONID", help="Questions to include")
-group.add_argument("--not-question", action='append', nargs='+', type=int,
+group.add_argument("--not-question", action='extend', nargs='+', type=int,
                    metavar="QUESTIONID", help="Questions to exclude")
 parser.add_argument("--css",
                     help="Additional CSS file to use in PDF creation.")
 parser.add_argument("--template-only", action='store_true',
                     help="Create only the template, without students.")
 args = parser.parse_args()
-
-flatten_list(args.only_question)
-flatten_list(args.not_question)
 
 canvas = canvas.Canvas(args=args)
 

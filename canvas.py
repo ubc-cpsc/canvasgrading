@@ -4,6 +4,13 @@ import requests
 
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
 
+class ExtendAction(argparse.Action):
+    """ Add argparse action='extend' for pre-3.8 python """
+    def __call__(self, parser, namespace, values, option_string=None):
+        items = getattr(namespace, self.dest) or []
+        items.extend(values)
+        setattr(namespace, self.dest, items)
+
 class Canvas:
     """ Canvas """
     def __init__(self, token=None, args=None):
@@ -19,6 +26,9 @@ class Canvas:
     @staticmethod
     def add_arguments(parser, course=True, quiz=False, assignment=False):
         """ docstring """
+        # Add argparse action='extend' for pre-3.8 python
+        parser.register('action', 'extend', ExtendAction)
+
         parser.add_argument("-d", "--debug", action='store_true',
                             help="Enable debugging mode")
         group = parser.add_mutually_exclusive_group(required=True)

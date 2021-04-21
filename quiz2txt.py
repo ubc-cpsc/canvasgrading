@@ -60,13 +60,6 @@ def process_submission(qsub):
             else:
                 print(f"Missing rubric file for question {question_id} (question group {question['quiz_group_id']})")
 
-def flatten_list(l):
-    if isinstance(l, list):
-        for x in [x for x in l if isinstance(x, list)]:
-            l.remove(x)
-            l.extend(x)
-    return l
-
 def question_included(qid):
     if args.not_question and qid in args.not_question:
         return False
@@ -84,9 +77,6 @@ group.add_argument("--only-question", action='extend', nargs='+', type=int, meta
 group.add_argument("--not-question", action='extend', nargs='+', type=int, metavar="QUESTIONID",
                    help="Questions to exclude")
 args = parser.parse_args()
-
-flatten_list(args.only_question)
-flatten_list(args.not_question)
 
 canvas = canvas.Canvas(args=args)
 
