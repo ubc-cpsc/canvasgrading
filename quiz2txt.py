@@ -31,6 +31,10 @@ def process_submission(qsub):
             if not question_included(question_id):
                 continue
 
+            if question_id not in sub_questions:
+                print(f"Question {question_id} does not have associated text.")
+                continue
+
             question = sub_questions[question_id]
             if question['question_type'] not in ['essay_question', 'file_upload_question']:
                 continue
