@@ -5,10 +5,10 @@ import csv
 import re
 from os import path
 import json
-import requests
-import weasyprint
 import zipfile
 import argparse
+import requests
+import weasyprint
 
 import canvas
 
