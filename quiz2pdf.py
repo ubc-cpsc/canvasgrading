@@ -31,24 +31,24 @@ def save_raw_answer(answer, identification):
         rawanswers_file.writestr(raw_file_name, answer['text'])
     elif question['question_type'] == 'file_upload_question':
         answer['text'] = '<div class="file-upload">See file(s): <ul>'
-        for file in [canvas.file(a) for a in answer['attachment_ids']]:
-            raw_file_name = f"answer_{identification}_{file['display_name']}"
-            data = requests.get(file['url'])
-            if data:
-                rawanswers_file.writestr(raw_file_name, data.content)
+        for cfile in [canvas.file(a) for a in answer['attachment_ids']]:
+            raw_file_name = f"answer_{identification}_{cfile['display_name']}"
+            result = requests.get(cfile['url'])
+            if result:
+                rawanswers_file.writestr(raw_file_name, result.content)
                 answer['text'] += f'<li>{raw_file_name}</li>'
         answer['text'] += '</ul></div>'
 
 
-def write_exam_file(htmlfile, questions, qs=None):
+def write_exam_file(htmlfile, question_dict, quiz_submission=None):
     acct = ''
     snum = ''
     sname = ''
     answers = {}
     sub_questions = {}
     num_attempts = 0
-    if qs != None:
-        sub = submissions[qs['submission_id']]
+    if quiz_submission is not None:
+        sub = submissions[quiz_submission['submission_id']]
         snum = sub['user']['sis_user_id']
         sname = sub['user']['name']
         if args.classlist:
@@ -59,7 +59,7 @@ def write_exam_file(htmlfile, questions, qs=None):
         else:
             acct = snum
 
-        sub_questions = quiz.submission_questions(qs)
+        sub_questions = quiz.submission_questions(quiz_submission)
 
         previous_score = -1
         previous_attempt = -1
@@ -101,8 +101,8 @@ def write_exam_file(htmlfile, questions, qs=None):
         <span><span class='sname'>{sname}</span></span>
         </div>''')
 
-    qn = 1
-    for (question_id, question) in questions.items():
+    qnum = 1
+    for (question_id, question) in question_dict.items():
         question_name = question['question_name']
         question_text = question['question_text']
         question_type = question['question_type']
@@ -125,7 +125,7 @@ def write_exam_file(htmlfile, questions, qs=None):
             answer = answers[question_id]
             answer_text = answer['text'] if 'text' in answer else ''
             points = answer['points']
-        elif qs != None:
+        elif quiz_submission is not None:
             question_type = None # To avoid formatting of multiple-choice
             answer_text = '''
             *** NO SUBMISSION ***<br/><br/>
@@ -135,39 +135,41 @@ def write_exam_file(htmlfile, questions, qs=None):
             this set).
             '''
 
-        if question_type == 'calculated_question' or \
-             question_type == 'short_answer_question' or \
-             question_type == 'essay_question' or \
-             question_type == 'numerical_question':
+        if question_type in ('calculated_question',
+                             'short_answer_question',
+                             'essay_question',
+                             'numerical_question'):
             pass # use answer exactly as provided
-        elif question_type == 'true_false_question' or \
-           question_type == 'multiple_choice_question' or \
-           question_type == 'multiple_answers_question':
+        elif question_type in ('true_false_question',
+                               'multiple_choice_question',
+                               'multiple_answers_question'):
             answer_text = ''
-            for pa in question['answers']:
+            for pan in question['answers']:
                 if question_type == 'multiple_answers_question':
-                    key = f"answer_{pa['id']}"
-                    choice = answer[key] if answer != None and key in answer else ''
-                    if choice == '0': choice = ''
+                    key = f"answer_{pan['id']}"
+                    choice = answer[key] if answer is not None and key in answer else ''
+                    if choice == '0':
+                        choice = ''
                 else:
-                    choice = 'X' if answer != None and 'answer_id' in answer and pa['id'] == answer['answer_id'] else ''
+                    choice = 'X' if answer is not None and 'answer_id' in answer and pan['id'] == answer['answer_id'] else ''
                 answer_text += '<div class="mc-item">'
                 answer_text += f'<span class="mc-item-space"><span>&nbsp;{choice}&nbsp;</span></span>'
                 answer_text += f'&nbsp;&nbsp;'
-                answer_text += f'<span class="mc-item-text">{pa["text"]}</span>'
+                answer_text += f'<span class="mc-item-text">{pan["text"]}</span>'
                 answer_text += '</div>'
 
-        elif question_type == 'fill_in_multiple_blanks_question' or \
-             question_type == 'multiple_dropdowns_question':
+        elif question_type in ('fill_in_multiple_blanks_question',
+                               'multiple_dropdowns_question'):
             answer_text = '<table class="multiple-blanks-table">'
             tokens = []
             dd_answers = {}
-            for pa in question['answers']:
-                if pa['blank_id'] not in tokens: tokens.append(pa['blank_id'])
-                dd_answers[pa['id']] = pa['text']
+            for pan in question['answers']:
+                if pan['blank_id'] not in tokens:
+                    tokens.append(pan['blank_id'])
+                dd_answers[pan['id']] = pan['text']
             for token in tokens:
                 key = f'answer_for_{token}'
-                choice = answer[key] if answer != None and key in answer else ''
+                choice = answer[key] if answer is not None and key in answer else ''
                 if choice != '' and question_type == 'multiple_dropdowns_question' and choice in dd_answers:
                     choice = dd_answers[choice]
                 answer_text += '<tr>'
@@ -182,11 +184,11 @@ def write_exam_file(htmlfile, questions, qs=None):
             matches = {}
             for match in question['matches']:
                 matches[f"{match['match_id']}"] = match['text']
-            for pa in question['answers']:
-                key = f"answer_{pa['id']}"
-                choice = matches[answer[key]] if answer != None and key in answer and answer[key] in matches else ''
+            for pan in question['answers']:
+                key = f"answer_{pan['id']}"
+                choice = matches[answer[key]] if answer is not None and key in answer and answer[key] in matches else ''
                 answer_text += '<tr>'
-                answer_text += f'<td class="multiple-blanks-token">{pa["text"]}</td><td>=></td>'
+                answer_text += f'<td class="multiple-blanks-token">{pan["text"]}</td><td>=></td>'
                 answer_text += '<td>=></td>'
                 answer_text += f'<td class="multiple-blanks-answer">{choice}</td>'
                 answer_text += '</tr>'
@@ -194,7 +196,7 @@ def write_exam_file(htmlfile, questions, qs=None):
 
         elif question_type == 'file_upload_question':
             pass # This is handled in the processing of history above.
-        elif question_type != None:
+        elif question_type is not None:
             raise ValueError(f'Invalid question type: "{question_type}"')
 
         num_attempts_text = '' if num_attempts <= 1 else f' ({num_attempts} attempts)'
@@ -210,7 +212,7 @@ def write_exam_file(htmlfile, questions, qs=None):
         <div class=answer>{answer_text}</div>
         </div>
         ''')
-        qn += 1
+        qnum += 1
 
 def end_file(htmlfile):
     htmlfile.write('</body>\n</html>')
@@ -219,16 +221,17 @@ def end_file(htmlfile):
 def question_included(qid):
     if args.not_question and qid in args.not_question:
         return False
-    elif args.only_question:
+    if args.only_question:
         return qid in args.only_question
-    else:
-        return True
+    return True
 
 parser = argparse.ArgumentParser()
 canvas.Canvas.add_arguments(parser, quiz=True)
 parser.add_argument("-l", "--classlist",
                     type=str, #type=argparse.FileType('r', newline=''),
-                    help="CSV file containing student number and account. If used, account is provided on the front page, otherwise it will include name and student number.")
+                    help="""CSV file containing student number and account.
+                    If used, account is provided on the front page, otherwise
+                    it will include name and student number.""")
 parser.add_argument("-p", "--output-prefix",
                     help="Path/prefix for output files")
 group = parser.add_mutually_exclusive_group()
