@@ -65,28 +65,32 @@ def write_exam_file(htmlfile, question_dict, quiz_submission=None):
         previous_attempt = -1
         variation = {}
         for attempt in sub['submission_history']:
-            if 'submission_data' in attempt:
-                num_attempts += 1
-                update_answer = False
-                if attempt['score'] > previous_score:
-                    previous_score = attempt['score']
-                    previous_attempt = attempt['attempt']
-                    update_answer = True
-                elif attempt['score'] == previous_score and \
-                     attempt['attempt'] > previous_attempt:
-                    previous_attempt = attempt['attempt']
-                    update_answer = True
-                if attempt['attempt'] in variation.keys():
-                    variation[attempt['attempt']] += 'x'
-                else:
-                    variation[attempt['attempt']] = ''
-                for answer in attempt['submission_data']:
-                    if question_included(answer['question_id']):
-                        save_raw_answer(
-                            answer,
-                            f"{answer['question_id']}_{acct}_v{attempt['attempt']}{variation[attempt['attempt']]}")
-                        if update_answer:
-                            answers[answer['question_id']] = answer
+            if 'submission_data' not in attempt:
+                continue
+
+            num_attempts += 1
+            update_answer = False
+            if attempt['score'] > previous_score:
+                previous_score = attempt['score']
+                previous_attempt = attempt['attempt']
+                update_answer = True
+            elif attempt['score'] == previous_score and \
+                    attempt['attempt'] > previous_attempt:
+                previous_attempt = attempt['attempt']
+                update_answer = True
+            if attempt['attempt'] in variation.keys():
+                variation[attempt['attempt']] += 'x'
+            else:
+                variation[attempt['attempt']] = ''
+
+            for answer in attempt['submission_data']:
+                if not question_included(answer['question_id']):
+                    continue
+                save_raw_answer(
+                    answer,
+                    f"{answer['question_id']}_{acct}_v{attempt['attempt']}{variation[attempt['attempt']]}")
+                if update_answer:
+                    answers[answer['question_id']] = answer
 
     if args.classlist:
         htmlfile.write(f'''<div class='student-wrapper'>
@@ -109,11 +113,7 @@ def write_exam_file(htmlfile, question_dict, quiz_submission=None):
         if question_id in sub_questions and question_type == 'calculated_question':
             question_text = sub_questions[question_id]['question_text']
         if question_type == 'text_only_question':
-            htmlfile.write(f'''
-            <div class='text-only-question'>
-             {question_text} 
-            </div>
-            ''')
+            htmlfile.write(f"<div class='text-only-question'>{question_text}</div>")
             continue
 
         worth = question['points_possible']
@@ -154,7 +154,7 @@ def write_exam_file(htmlfile, question_dict, quiz_submission=None):
                     choice = 'X' if answer is not None and 'answer_id' in answer and pan['id'] == answer['answer_id'] else ''
                 answer_text += '<div class="mc-item">'
                 answer_text += f'<span class="mc-item-space"><span>&nbsp;{choice}&nbsp;</span></span>'
-                answer_text += f'&nbsp;&nbsp;'
+                answer_text += '&nbsp;&nbsp;'
                 answer_text += f'<span class="mc-item-text">{pan["text"]}</span>'
                 answer_text += '</div>'
 
@@ -188,7 +188,7 @@ def write_exam_file(htmlfile, question_dict, quiz_submission=None):
                 key = f"answer_{pan['id']}"
                 choice = matches[answer[key]] if answer is not None and key in answer and answer[key] in matches else ''
                 answer_text += '<tr>'
-                answer_text += f'<td class="multiple-blanks-token">{pan["text"]}</td><td>=></td>'
+                answer_text += f'<td class="multiple-blanks-token">{pan["text"]}</td>'
                 answer_text += '<td>=></td>'
                 answer_text += f'<td class="multiple-blanks-answer">{choice}</td>'
                 answer_text += '</tr>'
@@ -227,18 +227,17 @@ def question_included(qid):
 
 parser = argparse.ArgumentParser()
 canvas.Canvas.add_arguments(parser, quiz=True)
-parser.add_argument("-l", "--classlist",
-                    type=str, #type=argparse.FileType('r', newline=''),
+parser.add_argument("-l", "--classlist", type=str, #type=argparse.FileType('r', newline=''),
                     help="""CSV file containing student number and account.
                     If used, account is provided on the front page, otherwise
                     it will include name and student number.""")
 parser.add_argument("-p", "--output-prefix",
                     help="Path/prefix for output files")
 group = parser.add_mutually_exclusive_group()
-group.add_argument("--only-question", action='extend', nargs='+', type=int,
-                   metavar="QUESTIONID", help="Questions to include")
-group.add_argument("--not-question", action='extend', nargs='+', type=int,
-                   metavar="QUESTIONID", help="Questions to exclude")
+group.add_argument("--only-question", action='extend', nargs='+', type=int, metavar="QUESTIONID",
+                   help="Questions to include")
+group.add_argument("--not-question", action='extend', nargs='+', type=int, metavar="QUESTIONID",
+                   help="Questions to exclude")
 parser.add_argument("--css",
                     help="Additional CSS file to use in PDF creation.")
 parser.add_argument("--template-only", action='store_true',
