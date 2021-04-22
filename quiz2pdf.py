@@ -27,17 +27,16 @@ def start_file(file_name):
 def save_raw_answer(answer, identification):
     question = questions[answer['question_id']]
     if question['question_type'] == 'essay_question':
-        raw_file_name = 'answer_%s.html' % identification
+        raw_file_name = f'answer_{identification}.html'
         rawanswers_file.writestr(raw_file_name, answer['text'])
     elif question['question_type'] == 'file_upload_question':
         answer['text'] = '<div class="file-upload">See file(s): <ul>'
         for file in [canvas.file(a) for a in answer['attachment_ids']]:
-            raw_file_name = 'answer_%s_%s' % \
-                            (identification, file['display_name'])
+            raw_file_name = f"answer_{identification}_{file['display_name']}"
             data = requests.get(file['url'])
             if data:
                 rawanswers_file.writestr(raw_file_name, data.content)
-                answer['text'] += '<li>%s</li>' % raw_file_name
+                answer['text'] += f'<li>{raw_file_name}</li>'
         answer['text'] += '</ul></div>'
 
 
@@ -56,7 +55,7 @@ def write_exam_file(htmlfile, questions, qs=None):
             if snum in student_accounts:
                 acct = student_accounts[snum]
             else:
-                print('Account not found for student: %s' % snum)
+                print(f'Account not found for student: {snum}')
         else:
             acct = snum
 
@@ -83,25 +82,24 @@ def write_exam_file(htmlfile, questions, qs=None):
                     variation[attempt['attempt']] = ''
                 for answer in attempt['submission_data']:
                     if question_included(answer['question_id']):
-                        save_raw_answer(answer, '%d_%s_v%d%s' % \
-                                        (answer['question_id'], acct,
-                                         attempt['attempt'],
-                                         variation[attempt['attempt']]))
+                        save_raw_answer(
+                            answer,
+                            f"{answer['question_id']}_{acct}_v{attempt['attempt']}{variation[attempt['attempt']]}")
                         if update_answer:
                             answers[answer['question_id']] = answer
 
     if args.classlist:
-        htmlfile.write('''<div class='student-wrapper'>
+        htmlfile.write(f'''<div class='student-wrapper'>
         <span class='account-label'>Account:</span>
-        <span><span class='account'>%s</span></span>
-        </div>''' % acct)
+        <span><span class='account'>{acct}</span></span>
+        </div>''')
     else:
-        htmlfile.write('''<div class='student-wrapper'>
+        htmlfile.write(f'''<div class='student-wrapper'>
         <span class='snum-label'>Student Number:</span>
-        <span><span class='snum'>%s</span></span>
+        <span><span class='snum'>{snum}</span></span>
         <span class='sname-label'>Name:</span>
-        <span><span class='sname'>%s</span></span>
-        </div>''' % (snum, sname))
+        <span><span class='sname'>{sname}</span></span>
+        </div>''')
 
     qn = 1
     for (question_id, question) in questions.items():
@@ -111,11 +109,11 @@ def write_exam_file(htmlfile, questions, qs=None):
         if question_id in sub_questions and question_type == 'calculated_question':
             question_text = sub_questions[question_id]['question_text']
         if question_type == 'text_only_question':
-            htmlfile.write('''
+            htmlfile.write(f'''
             <div class='text-only-question'>
-              %s
+             {question_text} 
             </div>
-            ''' % question_text)
+            ''')
             continue
 
         worth = question['points_possible']
@@ -148,12 +146,16 @@ def write_exam_file(htmlfile, questions, qs=None):
             answer_text = ''
             for pa in question['answers']:
                 if question_type == 'multiple_answers_question':
-                    key = 'answer_%s' % pa['id']
+                    key = f"answer_{pa['id']}"
                     choice = answer[key] if answer != None and key in answer else ''
                     if choice == '0': choice = ''
                 else:
                     choice = 'X' if answer != None and 'answer_id' in answer and pa['id'] == answer['answer_id'] else ''
-                answer_text += '<div class="mc-item"><span class="mc-item-space"><span>&nbsp;%s&nbsp;</span></span>&nbsp;&nbsp;<span class="mc-item-text">%s</span></div>' % (choice, pa['text'])
+                answer_text += '<div class="mc-item">'
+                answer_text += f'<span class="mc-item-space"><span>&nbsp;{choice}&nbsp;</span></span>'
+                answer_text += f'&nbsp;&nbsp;'
+                answer_text += f'<span class="mc-item-text">{pa["text"]}</span>'
+                answer_text += '</div>'
 
         elif question_type == 'fill_in_multiple_blanks_question' or \
              question_type == 'multiple_dropdowns_question':
@@ -164,44 +166,50 @@ def write_exam_file(htmlfile, questions, qs=None):
                 if pa['blank_id'] not in tokens: tokens.append(pa['blank_id'])
                 dd_answers[pa['id']] = pa['text']
             for token in tokens:
-                key = 'answer_for_%s' % token
+                key = f'answer_for_{token}'
                 choice = answer[key] if answer != None and key in answer else ''
                 if choice != '' and question_type == 'multiple_dropdowns_question' and choice in dd_answers:
                     choice = dd_answers[choice]
-                answer_text += '<tr><td class="multiple-blanks-token">%s</td><td>=></td><td class=multiple-blanks-answer>%s</td></tr>' % (token, choice)
+                answer_text += '<tr>'
+                answer_text += f'<td class="multiple-blanks-token">{token}</td>'
+                answer_text += '<td>=></td>'
+                answer_text += f'<td class=multiple-blanks-answer>{choice}</td>'
+                answer_text += '</tr>'
             answer_text += '</table>'
 
         elif question_type == 'matching_question':
             answer_text = '<table class="multiple-blanks-table">'
             matches = {}
             for match in question['matches']:
-                matches['%d' % match['match_id']] = match['text']
+                matches[f"{match['match_id']}"] = match['text']
             for pa in question['answers']:
-                key = 'answer_%s' % pa['id']
+                key = f"answer_{pa['id']}"
                 choice = matches[answer[key]] if answer != None and key in answer and answer[key] in matches else ''
-                answer_text += '<tr><td class="multiple-blanks-token">%s</td><td>=></td><td class="multiple-blanks-answer">%s</td></tr>' % (pa['text'], choice)
+                answer_text += '<tr>'
+                answer_text += f'<td class="multiple-blanks-token">{pa["text"]}</td><td>=></td>'
+                answer_text += '<td>=></td>'
+                answer_text += f'<td class="multiple-blanks-answer">{choice}</td>'
+                answer_text += '</tr>'
             answer_text += '</table>'
 
         elif question_type == 'file_upload_question':
             pass # This is handled in the processing of history above.
         elif question_type != None:
-            raise ValueError('Invalid question type: "%s"' % question_type)
+            raise ValueError(f'Invalid question type: "{question_type}"')
 
-        htmlfile.write('''<div class="question-preamble question-%d"></div>
-        <div class="question-container question-%d">
-        <h2 class="question-title">Question %d [%s]:</h2>
-        <div class=question>%s</div>
+        num_attempts_text = '' if num_attempts <= 1 else f' ({num_attempts} attempts)'
+        htmlfile.write(f'''<div class="question-preamble question-{question_id}"></div>
+        <div class="question-container question-{question_id}">
+        <h2 class="question-title">Question {question_id} [{question_name}]:</h2>
+        <div class=question>{question_text}</div>
         <div class=points-container>
-          <span class=points-possible><span>%s&nbsp;</span></span>
-          <span class=points-canvas><span>%s&nbsp;</span></span>
+          <span class=points-possible><span>{worth}&nbsp;</span></span>
+          <span class=points-canvas><span>{points}&nbsp;</span></span>
         </div>
-        <h3 class=answer-title>Answer%s:</h3>
-        <div class=answer>%s</div>
+        <h3 class=answer-title>Answer{num_attempts_text}:</h3>
+        <div class=answer>{answer_text}</div>
         </div>
-        ''' % (question_id, question_id, question_id, question_name,
-               question_text, worth, points,
-               '' if num_attempts <= 1 else ' (%d attempts)' % num_attempts,
-               answer_text))
+        ''')
         qn += 1
 
 def end_file(htmlfile):
@@ -253,15 +261,14 @@ if args.classlist:
 
 print('Reading data from Canvas...')
 course = canvas.course(args.course, prompt_if_needed=True)
-print('Using course: %s / %s' % (course['term']['name'],
-                                 course['course_code']))
+print(f"Using course: {course['term']['name']} / {course['course_code']}")
 
 quiz = course.quiz(args.quiz, prompt_if_needed=True)
-print('Using quiz: %s' % (quiz['title']))
+print(f"Using quiz: {quiz['title']}")
 
 if not args.output_prefix:
     args.output_prefix = re.sub(r'[^A-Za-z0-9-_]+', '', quiz['title'])
-    print('Using prefix: %s' % args.output_prefix)
+    print(f'Using prefix: {args.output_prefix}')
 
 # Reading questions
 print('Retrieving quiz questions...')
@@ -277,10 +284,10 @@ else:
 print('Generating HTML files...')
 
 file_no = 1
-template_file = start_file(args.output_prefix + '_template.html')
+template_file = start_file(f'{args.output_prefix}_template.html')
 if not args.template_only:
-    exams_file = start_file(args.output_prefix + '_exams_%d.html' % file_no)
-    rawanswers_file = zipfile.ZipFile(args.output_prefix + '_raw_answers.zip', 'w')
+    exams_file = start_file(f'{args.output_prefix}_exams_{file_no}.html')
+    rawanswers_file = zipfile.ZipFile(f'{args.output_prefix}_raw_answers.zip', 'w')
 
 write_exam_file(template_file, questions)
 
@@ -295,14 +302,13 @@ if args.debug:
 
 num_exams = 0
 for qs in quiz_submissions:
-    print("Exporting student %d out of %d..." %
-          (num_exams + 1, len(quiz_submissions)), end='\r')
+    print(f"Exporting student {num_exams + 1} out of {len(quiz_submissions)}...", end='\r')
     write_exam_file(exams_file, questions, qs)
     num_exams += 1
     if num_exams % 20 == 0:
         end_file(exams_file)
         file_no += 1
-        exams_file = start_file(args.output_prefix + '_exams_%d.html' % file_no)
+        exams_file = start_file(f'{args.output_prefix}_exams_{file_no}.html')
 
 end_file(template_file)
 if not args.template_only:
@@ -315,11 +321,11 @@ if args.css:
     css.append(weasyprint.CSS(args.css))
 
 for file in htmlfile_list:
-    print(file + '...  ', end='\r')
-    weasyprint.HTML(filename=file).write_pdf(file + '.pdf', stylesheets=css)
+    print(f'{file}...  ', end='\r')
+    weasyprint.HTML(filename=file).write_pdf(f'{file}.pdf', stylesheets=css)
 
 print('\nDONE. Created files:')
 for file in htmlfile_list:
-    print('- ' + file + '.pdf')
+    print(f'- {file}.pdf')
 if not args.template_only:
-    print('- ' + args.output_prefix + '_raw_answers.zip')
+    print(f'- {args.output_prefix}_raw_answers.zip')
