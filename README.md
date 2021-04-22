@@ -74,8 +74,10 @@ file can be used for question-specific or exam-specific formatting.
 7. `--template-only`: If provided, only the template is created, with
 no student submission.
 
-The script requires the use of the `weasyprint` Python library, which
-can be installed with:
+The script requires the use of the `weasyprint` Python library. As
+system package installation may be required, see
+https://weasyprint.readthedocs.io/en/stable/install.html
+before installing with something like:
 
     pip3 install --user weasyprint
 
