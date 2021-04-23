@@ -95,8 +95,8 @@ regex = args.regex
 repl = args.repl
 
 process_assns = args.assignments or args.all
-process_quizzes = args.quizzes or args.all
 process_pages = args.pages or args.all
+process_quizzes = args.quizzes or args.all
 if not (process_assns or process_pages or process_quizzes):
     parser.error("You must use a flag to indicate processing of at least one type.")
 
@@ -104,9 +104,33 @@ std_text_process = make_regex_repl_text_process(regex, repl)
 update_assn_fn = make_update_text(std_text_process, "description", "name")
 update_page_fn = make_update_text(std_text_process, "body", "url")
 
-# TODO: replace std_text_process with one that also accesses the questions (and answers?)
-# and updates them.
-update_quiz_fn = make_update_text(std_text_process, "description", "title")
+# TODO: There is no QuizQuestion object (yet). So, I'm just getting dictionaries of values, which don't know how to update.
+# TODO: Proposed solution is to change make_update_text above so that it takes the update function to use, but that defaults to looking for an update function already attached to the object. Then, we can just use a custom one for the quiz question and LATER can choose instead to instantiate QuizQuestion as an object. OR could manually attach that function to each quizquestion dict.
+update_quiz_text = make_update_text(std_text_process, "description", "title")
+def update_quiz_and_questions(quiz):
+    print("Processing the quiz itself.")
+    update_quiz_text(quiz)
+
+    print("Fetching quiz questions from Canvas...")
+    (quiz_question_dict, quiz_group_dict) = quiz.questions()
+    quiz_questions = list(quiz_question_dict.values())
+    print("Done fetching quiz questions from Canvas.")
+
+    def update_quiz_question(qquestion):
+        # TODO: confirm html vs non-html variants are correct
+        # TODO: account for answers!
+        return make_update_text(std_text_process, \
+            ["question_text",
+            "correct_comments",
+            "incorrect_comments",
+            "neutral_comments",
+            "correct_comments_html",
+            "incorrect_comments_html",
+            "neutral_comments_html"],
+              "question_name")
+    update_objects(quiz_questions, "quiz (%s) questions" % quiz["title"], update_quiz_question)
+
+update_quiz_fn = update_quiz_and_questions
 
 
 canvas = canvas.Canvas(args=args)

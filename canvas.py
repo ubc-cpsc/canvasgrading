@@ -180,12 +180,14 @@ class Course(Canvas):
                 students[s['sis_user_id'] if s['sis_user_id'] else '0'] = s
         return students
 
-class CourseOwnedObject(Canvas):
+class CourseSubObject(Canvas):
 
     # If not provided, the request_param_name defaults to the lower-cased class name.
-    def __init__(self, course, route_name, data, id_field='id', request_param_name = None):
-        super().__init__(course.token)
-        self.course = course
+    def __init__(self, parent, route_name, data, id_field='id', request_param_name=None):
+        # MUST be available before calling self.get_course.
+        self.parent = parent
+        super().__init__(self.get_course(course.token))
+
         self.data = data
         self.id_field = id_field
         self.id = self.compute_id()
@@ -195,11 +197,17 @@ class CourseOwnedObject(Canvas):
             request_param_name = type(self).__name__.lower()
         self.request_param_name = request_param_name
 
+    def get_course(self):
+        if isinstance(self.parent, Course):
+            return self.parent
+        else:
+            return self.parent.get_course()
+
     def compute_id(self):
         return self.data[self.id_field]
 
     def compute_base_url(self):
-        return '%s/%s' % (self.course.url_prefix, self.route_name)
+        return '%s/%s' % (self.parent.url_prefix, self.route_name)
     
     def compute_url_prefix(self):
         return '%s/%s' % (self.compute_base_url(), self.id)
@@ -225,7 +233,7 @@ class CourseOwnedObject(Canvas):
         self.url_prefix = self.compute_url_prefix()
         return self
 
-class Quiz(CourseOwnedObject):    
+class Quiz(CourseSubObject):    
     def __init__(self, course, quiz_data):
         super().__init__(course, "quizzes", quiz_data)
 
@@ -352,7 +360,42 @@ class Quiz(CourseOwnedObject):
                      }
                  }]})
 
-class Assignment(CourseOwnedObject):
+class QuizQuestion(CourseSubObject):
+    # If the quiz is not supplied, fetches it via quiz_question_data['quiz_id'].
+    def __init__(self, quiz_question_data, quiz=None):
+        if quiz is None:
+            if 'quiz_id' not in quiz_question_data:
+                raise RuntimeError('No quiz provided and cannot find quiz id for: %s' % quiz_question_data)
+            quiz = course.quiz(quiz_question_data)
+        super().__init__(quiz, "quizzes", quiz_question_data, request_param_name='question')
+
+    def update(data = None):
+        # Reformat question data to account for different format
+        # between input and output in Canvas API
+        if 'answers' in data:
+            for answer in data['answers']:
+                if 'html' in answer:
+                    answer['answer_html'] = answer['html']
+                if data['question_type'] == 'matching_question':
+                    if 'left' in answer:
+                        answer['answer_match_left'] = answer['left']
+                    if 'right' in answer:
+                        answer['answer_match_right'] = answer['right']
+                if data['question_type'] == 'multiple_dropdowns_question':
+                    if 'weight' in answer:
+                        answer['answer_weight'] = answer['weight']
+                    if 'text' in answer:
+                        answer['answer_text'] = answer['text']
+
+        super.update(data)
+
+    def update_question(self, data=None):
+        self.update(data)
+
+
+
+
+class Assignment(CourseSubObject):
     
     def __init__(self, course, assg_data):
         super().__init__(course, "assignments", assg_data)
@@ -362,7 +405,7 @@ class Assignment(CourseOwnedObject):
 
     def rubric(self):
         for r in self.request('%s/rubrics/%d?include[]=associations' %
-                              (self.course.url_prefix,
+                              (self.get_course().url_prefix,
                                self.data['rubric_settings']['id'])):
             return r
         return None
@@ -377,14 +420,14 @@ class Assignment(CourseOwnedObject):
                 'purpose': 'grading',
             },
         }
-        self.post('%s/rubrics' % self.course.url_prefix, rubric_data)
+        self.post('%s/rubrics' % self.get_course().url_prefix, rubric_data)
 
     def send_assig_grade(self, student, assessment):
         self.put('%s/submissions/%d' % (self.url_prefix, student['id']),
                  { 'rubric_assessment': assessment })
 
 
-class Page(CourseOwnedObject):
+class Page(CourseSubObject):
     
     def __init__(self, course, page_data):
         super().__init__(course, "pages", page_data, id_field="url", request_param_name="wiki_page")
