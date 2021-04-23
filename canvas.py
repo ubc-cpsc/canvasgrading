@@ -186,7 +186,7 @@ class CourseSubObject(Canvas):
     def __init__(self, parent, route_name, data, id_field='id', request_param_name=None):
         # MUST be available before calling self.get_course.
         self.parent = parent
-        super().__init__(self.get_course(course.token))
+        super().__init__(self.get_course().token)
 
         self.data = data
         self.id_field = id_field
