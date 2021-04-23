@@ -147,18 +147,24 @@ print('Using course: %s / %s' % (course['term']['name'],
 
 
 if process_assns:
+    print()
+    print("--------------------------------------------------------------------------")
     print("Fetching assignments from Canvas...")
     assignments = course.assignments()
     print("Done fetching assignments from Canvas.")
     update_objects(assignments, "assignment", update_assn_fn)
 
 if process_pages:
+    print()
+    print("--------------------------------------------------------------------------")
     print("Fetching pages from Canvas...")
     pages = course.pages()
     print("Done fetching pages from Canvas.")
     update_objects(pages, "page", update_page_fn)
 
 if process_quizzes:
+    print()
+    print("--------------------------------------------------------------------------")
     print("Fetching quizzes from Canvas...")
     quizzes = course.quizzes()
     print("Done fetching quizzes from Canvas.")
