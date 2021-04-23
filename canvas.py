@@ -4,15 +4,19 @@ import requests
 
 MAIN_URL = 'https://canvas.ubc.ca/api/v1'
 
+
 class ExtendAction(argparse.Action):
     """ Add argparse action='extend' for pre-3.8 python """
+
     def __call__(self, parser, namespace, values, option_string=None):
         items = getattr(namespace, self.dest) or []
         items.extend(values)
         setattr(namespace, self.dest, items)
 
+
 class Canvas:
     """ Canvas """
+
     def __init__(self, token=None, args=None):
         self.debug = args.debug if args else False
         if args and args.canvas_token_file:
@@ -46,7 +50,6 @@ class Canvas:
             parser.add_argument("-a", "--assignment", type=int,
                                 help="Assignment ID")
 
-
     def request(self, request, stop_at_first=False):
         """ docstring """
         retval = []
@@ -61,12 +64,14 @@ class Canvas:
                     'last' not in response.links or
                     response.links['current']['url'] == response.links['last']['url']):
                 break
-            response = requests.get(response.links['next']['url'], headers=self.token_header)
+            response = requests.get(
+                response.links['next']['url'], headers=self.token_header)
         return retval
 
     def put(self, url, data):
         """ docstring """
-        response = requests.put(MAIN_URL + url, json=data, headers=self.token_header)
+        response = requests.put(MAIN_URL + url, json=data,
+                                headers=self.token_header)
         response.raise_for_status()
         if response.status_code == 204:
             return None
@@ -74,7 +79,8 @@ class Canvas:
 
     def post(self, url, data):
         """ docstring """
-        response = requests.post(MAIN_URL + url, json=data, headers=self.token_header)
+        response = requests.post(
+            MAIN_URL + url, json=data, headers=self.token_header)
         response.raise_for_status()
         if response.status_code == 204:
             return None
@@ -105,7 +111,8 @@ class Canvas:
             for index, course in enumerate(courses):
                 term = course.get('term', {}).get('name', 'NO TERM')
                 course_code = course.get('course_code', 'UNKNOWN COURSE')
-                print(f"{index:2}: {course['id']:7} - {term:10} / {course_code}")
+                print(
+                    f"{index:2}: {course['id']:7} - {term:10} / {course_code}")
             course_index = int(input('Which course? '))
             return Course(self, courses[course_index])
         return None
@@ -114,6 +121,7 @@ class Canvas:
         """ docstring """
         for file in self.request(f'/files/{file_id}'):
             return file
+
 
 class Course(Canvas):
     """ Course """
@@ -134,7 +142,8 @@ class Course(Canvas):
             # the body is omitted from listing queries. So, we must query
             # individually for each page.
             for page_data in result:
-                new_page_datas = self.request(f'{self.url_prefix}/pages/{page_data["url"]}')
+                new_page_datas = self.request(
+                    f'{self.url_prefix}/pages/{page_data["url"]}')
                 if len(new_page_datas) == 1:
                     pages.append(Page(self, new_page_datas[0]))
                 elif len(new_page_datas) == 0:
@@ -149,7 +158,8 @@ class Course(Canvas):
         """ docstring """
         quizzes = []
         for result in self.request(f'{self.url_prefix}/quizzes'):
-            quizzes += [Quiz(self, quiz) for quiz in result if quiz['quiz_type'] == 'assignment']
+            quizzes += [Quiz(self, quiz)
+                        for quiz in result if quiz['quiz_type'] == 'assignment']
         return quizzes
 
     def quiz(self, quiz_id, prompt_if_needed=False):
@@ -169,7 +179,8 @@ class Course(Canvas):
         """ docstring """
         assignments = []
         for result in self.request(f'{self.url_prefix}/assignments'):
-            assignments += [Assignment(self, assn) for assn in result if 'online_quiz' not in assn['submission_types']]
+            assignments += [Assignment(self, assn)
+                            for assn in result if 'online_quiz' not in assn['submission_types']]
         return assignments
 
     def assignment(self, assignment_id, prompt_if_needed=False):
@@ -180,7 +191,8 @@ class Course(Canvas):
         if prompt_if_needed:
             assignments = self.assignments()
             for index, assignment in enumerate(assignments):
-                print(f"{index:2}: {assignment['id']:7} - {assignment['name']}")
+                print(
+                    f"{index:2}: {assignment['id']:7} - {assignment['name']}")
             asg_index = int(input('Which assignment? '))
             return assignments[asg_index]
         return None
@@ -200,6 +212,7 @@ class Course(Canvas):
                 sis_user_id = student['sis_user_id'] if student['sis_user_id'] else '0'
                 students[sis_user_id] = student
         return students
+
 
 class CourseSubObject(Canvas):
 
@@ -229,7 +242,7 @@ class CourseSubObject(Canvas):
 
     def compute_base_url(self):
         return f'{self.parent.url_prefix}/{self.route_name}'
-    
+
     def compute_url_prefix(self):
         return f'{self.compute_base_url()}/{self.id}'
 
@@ -243,19 +256,21 @@ class CourseSubObject(Canvas):
         """ docstring """
         return self.data.items()
 
-    def update(self, data = None):
+    def update(self, data=None):
         if data:
             self.data = data
         if self.id:
-            self.data = self.put(self.url_prefix, { self.request_param_name: self.data } )
+            self.data = self.put(
+                self.url_prefix, {self.request_param_name: self.data})
         else:
             self.data = self.post(self.compute_base_url(),
-                                  { self.route_name: self.data } )
+                                  {self.route_name: self.data})
         self.id = self.compute_id()
         self.url_prefix = self.compute_url_prefix()
         return self
 
-class Quiz(CourseSubObject):    
+
+class Quiz(CourseSubObject):
     """ Quiz """
 
     def __init__(self, course, quiz_data):
@@ -351,12 +366,12 @@ class Quiz(CourseSubObject):
             'include[]=user&' if include_user else '',
             'include[]=submission&' if include_submission else '',
             'include[]=submission_history&' if include_history else '',
-            ])
+        ])
         for response in self.request(f'{self.url_prefix}/submissions?{include}'):
             quiz_submissions += [
                 qs for qs in response['quiz_submissions']
                 if include_settings_only or qs['workflow_state'] != 'settings_only'
-                ]
+            ]
             if include_submission:
                 for submission in response['submissions']:
                     submissions[submission['id']] = submission
@@ -379,12 +394,14 @@ class Quiz(CourseSubObject):
                      'questions': {question_id: {'score': points, 'comment': comments}}
                  }]})
 
+
 class QuizQuestion(CourseSubObject):
     # If the quiz is not supplied, fetches it via quiz_question_data['quiz_id'].
     def __init__(self, quiz_question_data, quiz=None):
         if quiz is None:
             if 'quiz_id' not in quiz_question_data:
-                raise RuntimeError('No quiz provided and cannot find quiz id for: %s' % quiz_question_data)
+                raise RuntimeError(
+                    'No quiz provided and cannot find quiz id for: %s' % quiz_question_data)
             quiz = course.quiz(quiz_question_data)
         super().__init__(quiz, "questions", quiz_question_data, request_param_name='question')
 
@@ -413,7 +430,6 @@ class QuizQuestion(CourseSubObject):
 
     def update_question(self, data=None):
         return self.update(data)
-
 
 
 class Assignment(CourseSubObject):
@@ -447,13 +463,15 @@ class Assignment(CourseSubObject):
 
     def send_assig_grade(self, student, assessment):
         """ docstring """
-        self.put(f"{self.url_prefix}/submissions/{student['id']}", {'rubric_assessment': assessment})
+        self.put(
+            f"{self.url_prefix}/submissions/{student['id']}", {'rubric_assessment': assessment})
 
 
 class Page(CourseSubObject):
-    
+
     def __init__(self, course, page_data):
-        super().__init__(course, "pages", page_data, id_field="url", request_param_name="wiki_page")
+        super().__init__(course, "pages", page_data,
+                         id_field="url", request_param_name="wiki_page")
 
     def update_page(self, data=None):
         return self.update(self, data)
