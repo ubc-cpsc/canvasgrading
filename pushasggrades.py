@@ -16,8 +16,6 @@ parser = argparse.ArgumentParser()
 canvas.Canvas.add_arguments(parser, assignment=True)
 parser.add_argument("-p", "--parts", help="CSV file with assignment parts")
 parser.add_argument("-m", "--marks", help="CSV file with assignment marks")
-parser.add_argument("-d", "--debug", help="Enable debugging mode",
-                    action='store_true')
 args = parser.parse_args()
 canvas = canvas.Canvas(args=args)
 
@@ -52,7 +50,7 @@ if args.parts:
                 'long_description': p['Description'] if 'Description' in p \
                 else None,
                 'ratings': {0: {
-                    'points': round(float(p['Weight']) * 100,2),
+                    'points': round(float(p['Weight']) * 100, 2),
                 }}
             }
             last = i
@@ -75,13 +73,13 @@ if args.marks:
     if 'rubric' not in assignment.data:
         print('ERROR: Assignment has not been set up with a rubric.')
         exit(0)
-    
+
     with open(args.marks, 'r', newline='') as file:
         marks = csv.DictReader(file)
         i = 0
         for mark in marks:
             i += 1
-            print('Pushing grade %d...' % i, end='\r');
+            print('Pushing grade %d...' % i, end='\r')
             if mark['SID'] not in students:
                 print('\nIgnoring student %s, not on Canvas.' % mark['SID'])
                 continue
@@ -95,14 +93,14 @@ if args.marks:
             assess = {}
             totalcalc = 0
             for rub in assignment['rubric']:
-                rubpoints = round(float(mark[rub['id']]) * rub['points'],2) \
+                rubpoints = round(float(mark[rub['id']]) * rub['points'], 2) \
                             if rub['id'] in mark else 0
                 rubcomments = mark['Comments__' + rub['id']] \
                               if 'Comments__' + rub['id'] in mark else None
                 totalcalc += rubpoints
                 assess[rub['id']] = {'points': rubpoints,
                                      'comments': rubcomments}
-            penalty = round(penaltypc * totalcalc / 100.0,2)
+            penalty = round(penaltypc * totalcalc / 100.0, 2)
             # TODO Ensure total == totalcalc - penalty within a tolerance
             assess['PENALTY'] = {
                 'points': -penalty,
@@ -110,5 +108,5 @@ if args.marks:
             }
             # TODO General comments
             assignment.send_assig_grade(student, assess)
-            
+
 print('\nDONE.')

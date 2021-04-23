@@ -8,21 +8,21 @@ from collections import OrderedDict
 
 import canvas
 
-QUIZ_REQ_FIELDS = ['id','title','description','quiz_type',
-                   'assignment_group_id','time_limit','shuffle_answers',
-                   'hide_results','show_correct_answers',
-                   'show_correct_answers_at','hide_correct_answers_at',
-                   'show_correct_answers_last_attempt','allowed_attempts',
-                   'scoring_policy','one_question_at_a_time','cant_go_back',
-                   'access_code','ip_filter','due_at','lock_at','unlock_at',
-                   'published','one_time_results',
+QUIZ_REQ_FIELDS = ['id', 'title', 'description', 'quiz_type',
+                   'assignment_group_id', 'time_limit', 'shuffle_answers',
+                   'hide_results', 'show_correct_answers',
+                   'show_correct_answers_at', 'hide_correct_answers_at',
+                   'show_correct_answers_last_attempt', 'allowed_attempts',
+                   'scoring_policy', 'one_question_at_a_time', 'cant_go_back',
+                   'access_code', 'ip_filter', 'due_at', 'lock_at', 'unlock_at',
+                   'published', 'one_time_results',
                    'only_visible_to_overrides']
-GROUP_REQ_FIELDS = ['id','name','pick_count','question_points',
+GROUP_REQ_FIELDS = ['id', 'name', 'pick_count', 'question_points',
                     'assessment_question_bank_id', 'position']
-QUESTION_REQ_FIELDS = ['id','question_name','question_text','quiz_group_id',
-                       'question_type','position','points_possible',
-                       'correct_comments','incorrect_comments',
-                       'neutral_comments','text_after_answers','answers']
+QUESTION_REQ_FIELDS = ['id', 'question_name', 'question_text', 'quiz_group_id',
+                       'question_type', 'position', 'points_possible',
+                       'correct_comments', 'incorrect_comments',
+                       'neutral_comments', 'text_after_answers', 'answers']
 
 def canvas_to_alternate(question):
     if question['question_type'] == 'fill_in_multiple_blanks_question':
@@ -60,8 +60,6 @@ parser.add_argument("-s", "--strip", action='store_true',
                     help="Strip from output JSON values that cannot be pushed back in updates.")
 parser.add_argument("-a", "--alternative-format", action='store_true',
                     help="Use alternative format for answers in some types of questions.")
-parser.add_argument("-d", "--debug", help="Enable debugging mode",
-                    action='store_true')
 args = parser.parse_args()
 canvas = canvas.Canvas(args=args)
 
@@ -158,10 +156,10 @@ if len(values_from_json) > 0:
 if args.strip:
     quiz      = {k:v for k, v in quiz.items()
                  if k in QUIZ_REQ_FIELDS}
-    groups    = {id:{k:v for k,v in group.items()
+    groups    = {id:{k:v for k, v in group.items()
                      if k in GROUP_REQ_FIELDS}
                  for id, group in groups.items()}
-    questions = {id:{k:v for k,v in question.items()
+    questions = {id:{k:v for k, v in question.items()
                      if k in QUESTION_REQ_FIELDS}
                  for id, question in questions.items()}
 
@@ -188,11 +186,11 @@ for question in questions.values():
 if args.load_quiz:
     print('Saving values back to JSON file...')
     json_file.seek(0)
-    json.dump({ 'quiz': {k: v for k, v in quiz.items()},
-                'order': order,
-                'groups': groups,
-                'questions': questions
-    }, json_file, indent=2)
+    json.dump({'quiz': {k: v for k, v in quiz.items()},
+               'order': order,
+               'groups': groups,
+               'questions': questions
+              }, json_file, indent=2)
     json_file.truncate()
 
 json_file.close()
