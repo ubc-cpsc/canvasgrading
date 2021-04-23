@@ -367,27 +367,30 @@ class QuizQuestion(CourseSubObject):
             if 'quiz_id' not in quiz_question_data:
                 raise RuntimeError('No quiz provided and cannot find quiz id for: %s' % quiz_question_data)
             quiz = course.quiz(quiz_question_data)
-        super().__init__(quiz, "quizzes", quiz_question_data, request_param_name='question')
+        super().__init__(quiz, "questions", quiz_question_data, request_param_name='question')
 
-    def update(data = None):
+    def update(self, data=None):
+        if data:
+            self.data = data
+
         # Reformat question data to account for different format
         # between input and output in Canvas API
-        if 'answers' in data:
-            for answer in data['answers']:
+        if 'answers' in self.data:
+            for answer in self.data['answers']:
                 if 'html' in answer:
                     answer['answer_html'] = answer['html']
-                if data['question_type'] == 'matching_question':
+                if self.data['question_type'] == 'matching_question':
                     if 'left' in answer:
                         answer['answer_match_left'] = answer['left']
                     if 'right' in answer:
                         answer['answer_match_right'] = answer['right']
-                if data['question_type'] == 'multiple_dropdowns_question':
+                if self.data['question_type'] == 'multiple_dropdowns_question':
                     if 'weight' in answer:
                         answer['answer_weight'] = answer['weight']
                     if 'text' in answer:
                         answer['answer_text'] = answer['text']
 
-        super.update(data)
+        super().update(self.data)
 
     def update_question(self, data=None):
         self.update(data)

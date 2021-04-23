@@ -3,6 +3,11 @@ import argparse
 import re
 import sys
 
+# TODO: help users with creating regular expressions (e.g., have a mode that displays the regexes and takes a test string to act on but doesn't act on Canvas?)
+# TODO: make optionally interactive with confirmation of changes (via diffing?)
+# TODO: test _html versus regular versions of comment fields; test madness about field names changing (see QuizQuestion update and Jonatan's original code for this) 
+# TODO: carefully publish quizzes that were already published beforehand OR have an option to do this? (See: https://community.canvaslms.com/t5/Question-Forum/Saving-Quizzes-w-API/td-p/226406); beware of publishing previously unpublished quizzes, of publishing a quiz in its update but BEFORE the questions are updated (??), and the like.
+
 class BetterErrorParser(argparse.ArgumentParser):
     def error(self, message, help=True):
         sys.stderr.write('error: %s\n' % message)
@@ -19,6 +24,8 @@ def update_objects(objects, type_name, update_fn):
 def make_regex_repl_text_process(regex, repl):
     compiled_regex = re.compile(regex)
     def text_process(text):
+        if text is None:
+            return None
         (new_text, count) = compiled_regex.subn(repl, text, count=0)
         return new_text if count > 0 else None
     return text_process
@@ -41,9 +48,8 @@ def make_update_text(text_process_fn, text_fields, title_field=None):
         else:
             print("Processing next object")
         
+        update_needed = False
         for text_field in text_fields:
-            update_needed = False
-
             print("Processing text field: %s" % text_field)
             old_value = obj[text_field]
             new_value = text_process_fn(old_value)
@@ -76,12 +82,6 @@ def make_update_text(text_process_fn, text_fields, title_field=None):
 parser = BetterErrorParser()
 canvas.Canvas.add_arguments(parser)
 
-# TODO: help users with creating regular expressions (e.g., have a mode that displays the regexes and takes a test string to act on but doesn't act on Canvas?)
-# TODO: modify Canvas so that the file is optional and it will look for a default like token.txt (which should be in .gitignore!) if no argument is given and only then complain
-# TODO: make optionally interactive with confirmation of changes (via diffing?)
-# TODO: reasonable logging
-# TODO: need I avoid passing the extra args along to canvas.Canvas?
-
 
 parser.add_argument("-a", "--assignments", help="Process assignments.", action="store_true")
 parser.add_argument("-p", "--pages", help="Process pages.", action="store_true")
@@ -108,7 +108,7 @@ update_page_fn = make_update_text(std_text_process, "body", "url")
 # TODO: Proposed solution is to change make_update_text above so that it takes the update function to use, but that defaults to looking for an update function already attached to the object. Then, we can just use a custom one for the quiz question and LATER can choose instead to instantiate QuizQuestion as an object. OR could manually attach that function to each quizquestion dict.
 update_quiz_text = make_update_text(std_text_process, "description", "title")
 def update_quiz_and_questions(quiz):
-    print("Processing the quiz itself!")
+    print("Processing the quiz itself.")
     update_quiz_text(quiz)
 
     print("Fetching quiz questions from Canvas...")
