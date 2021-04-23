@@ -108,7 +108,7 @@ update_page_fn = make_update_text(std_text_process, "body", "url")
 # TODO: Proposed solution is to change make_update_text above so that it takes the update function to use, but that defaults to looking for an update function already attached to the object. Then, we can just use a custom one for the quiz question and LATER can choose instead to instantiate QuizQuestion as an object. OR could manually attach that function to each quizquestion dict.
 update_quiz_text = make_update_text(std_text_process, "description", "title")
 def update_quiz_and_questions(quiz):
-    print("Processing the quiz itself.")
+    print("Processing the quiz itself!")
     update_quiz_text(quiz)
 
     print("Fetching quiz questions from Canvas...")
@@ -116,10 +116,9 @@ def update_quiz_and_questions(quiz):
     quiz_questions = [canvas.QuizQuestion(qq, quiz) for qq in list(quiz_question_dict.values())]
     print("Done fetching quiz questions from Canvas.")
 
-    def update_quiz_question(qquestion):
-        # TODO: confirm html vs non-html variants are correct
-        # TODO: account for answers!
-        return make_update_text(std_text_process, \
+    # TODO: confirm html vs non-html variants are correct
+    # TODO: account for answers!
+    update_quiz_question = make_update_text(std_text_process, \
             ["question_text",
             "correct_comments",
             "incorrect_comments",
