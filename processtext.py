@@ -113,7 +113,7 @@ def update_quiz_and_questions(quiz):
 
     print("Fetching quiz questions from Canvas...")
     (quiz_question_dict, quiz_group_dict) = quiz.questions()
-    quiz_questions = list(quiz_question_dict.values())
+    quiz_questions = [canvas.QuizQuestion(qq, quiz) for qq in list(quiz_question_dict.values())]
     print("Done fetching quiz questions from Canvas.")
 
     def update_quiz_question(qquestion):
@@ -133,7 +133,7 @@ def update_quiz_and_questions(quiz):
 update_quiz_fn = update_quiz_and_questions
 
 
-canvas = canvas.Canvas(args=args)
+canvasObj = canvas.Canvas(args=args)
 
 print('Object types being processed: %s%s%s' % \
     ("assignments " if process_assns else "",
@@ -142,7 +142,7 @@ print('Object types being processed: %s%s%s' % \
 
 
 print('Reading data from Canvas...')
-course = canvas.course(args.course, prompt_if_needed=True)
+course = canvasObj.course(args.course, prompt_if_needed=True)
 print('Using course: %s / %s' % (course['term']['name'],
                                  course['course_code']))
 
