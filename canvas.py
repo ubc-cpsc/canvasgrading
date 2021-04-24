@@ -474,4 +474,4 @@ class Page(CourseSubObject):
                          id_field="url", request_param_name="wiki_page")
 
     def update_page(self, data=None):
-        return self.update(self, data)
+        return self.update(data)
