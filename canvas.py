@@ -215,9 +215,31 @@ class Course(Canvas):
 
 
 class CourseSubObject(Canvas):
+    """A Canvas element that is owned (directly or indirectly) by a Course.
+
+    Guaranteed to have instance fields:
+    - data (the dictionary of Canvas data associated with this object)
+    - id_field (the name of the field in data used as ID/key in Canvas)
+    - id (this object's specific ID; should be cached when recomputed)
+    - route_name (the Canvas API URL element specific to this type of object)
+    - url_prefix (the entire base for Canvas API URLs referring to this type of object;
+      should be cached when recomputed)
+    - request_param_name (the Canvas API URL element specific to this type of
+      object when referring to a single object (e.g., for updates))
+
+    Also supports direct dictionary-style indexing, which accesses/updates the data field.
+    """
 
     # If not provided, the request_param_name defaults to the lower-cased class name.
     def __init__(self, parent, route_name, data, id_field='id', request_param_name=None):
+        """Construct a CourseSubObject with the given parent, Canvas API route_name, and Canvas data.
+
+        The route_name is use to construct REST API URLs applying to this object. The data is
+        the object's content (as a dictionary) and used in updates to Canvas. The id_field is the
+        key used to identify this object in Canvas (also used for API calls). The request_param_name
+        is used for API calls as well (e.g., for PUT-based updates), defaulting to the lowercased
+        class name.
+        """
         # MUST be available before calling self.get_course.
         self.parent = parent
         super().__init__(self.get_course().token)
@@ -232,31 +254,46 @@ class CourseSubObject(Canvas):
         self.request_param_name = request_param_name
 
     def get_course(self):
+        """Get the Course that owns this object.
+
+        Traverses parents until it reaches a parent that is a course.
+        """
         if isinstance(self.parent, Course):
             return self.parent
         else:
             return self.parent.get_course()
 
     def compute_id(self):
+        """Get the ID of this object."""
         return self.data[self.id_field]
 
     def compute_base_url(self):
+        """Get the entire base for Canvas API URLs referring to this type of object"""
         return f'{self.parent.url_prefix}/{self.route_name}'
 
     def compute_url_prefix(self):
+        """Get the entire base for Canvas API URLs referring to this particular object."""
         return f'{self.compute_base_url()}/{self.id}'
 
     def __getitem__(self, index):
+        """Index into self.data"""
         return self.data[index]
 
     def __setitem__(self, index, value):
+        """Update self.data"""
         self.data[index] = value
 
     def items(self):
-        """ docstring """
+        """Get all items in self.data"""
         return self.data.items()
 
     def update(self, data=None):
+        """Update Canvas with new data for this object.
+
+        Updates the stored data with the given data if it is non-None.
+        Then, updates Canvas (posting a new object if self.id is absent).
+        Returns self for chaining.
+        """
         if data:
             self.data = data
         if self.id:
@@ -271,13 +308,18 @@ class CourseSubObject(Canvas):
 
 
 class Quiz(CourseSubObject):
-    """ Quiz """
+    """A Canvas Quiz object."""
 
     def __init__(self, course, quiz_data):
+        """Creates a new Quiz with a course as parent, and initial Canvas quiz data."""
         super().__init__(course, "quizzes", quiz_data)
 
     def update_quiz(self, data=None):
-        """ docstring """
+        """Update this quiz on Canvas.
+
+        Updates the stored data with the given data if it is non-None.
+        Then updates Canvas with the stored data. Returns self for chaining.
+        """
         return self.update(data)
 
     def question_group(self, group_id):
@@ -396,8 +438,13 @@ class Quiz(CourseSubObject):
 
 
 class QuizQuestion(CourseSubObject):
-    # If the quiz is not supplied, fetches it via quiz_question_data['quiz_id'].
+    """A Canvas object representing a Quiz Question."""
+
     def __init__(self, quiz_question_data, quiz=None):
+        """Create a new QuizQuestion with the given data and with the given quiz as parent.
+
+        If no quiz is supplied, fetches it via quiz_question_data['quiz_id'].
+        """
         if quiz is None:
             if 'quiz_id' not in quiz_question_data:
                 raise RuntimeError(
@@ -406,6 +453,14 @@ class QuizQuestion(CourseSubObject):
         super().__init__(quiz, "questions", quiz_question_data, request_param_name='question')
 
     def update(self, data=None):
+        """Update this QuizQuestion on Canvas.
+
+        Updates the stored data with the given data if it is non-None.
+        Then updates Canvas with the stored data. Returns self for chaining.
+
+        Attempts to handle differences in format between input and output
+        of quiz questions in the Canvas API.
+        """
         if data:
             self.data = data
 
@@ -429,16 +484,30 @@ class QuizQuestion(CourseSubObject):
         return super().update(self.data)
 
     def update_question(self, data=None):
+        """Update this QuizQuestion on Canvas.
+
+        Updates the stored data with the given data if it is non-None.
+        Then updates Canvas with the stored data. Returns self for chaining.
+
+        Attempts to handle differences in format between input and output
+        of quiz questions in the Canvas API.
+        """
         return self.update(data)
 
 
 class Assignment(CourseSubObject):
-    """ Assignment """
+    """A Canvas assignment object."""
 
     def __init__(self, course, assg_data):
+        """Create a new Assignment with course as parent and the given assignment data."""
         super().__init__(course, "assignments", assg_data)
 
     def update_assignment(self, data=None):
+        """Update this Assignment on Canvas.
+
+        Updates the stored data with the given data if it is non-None.
+        Then updates Canvas with the stored data. Returns self for chaining.
+        """
         return self.update(data)
 
     def rubric(self):
@@ -468,10 +537,17 @@ class Assignment(CourseSubObject):
 
 
 class Page(CourseSubObject):
+    """A Canvas page (wikipage) object."""
 
     def __init__(self, course, page_data):
+        """Create a Page with course as parent and the given page data."""
         super().__init__(course, "pages", page_data,
                          id_field="url", request_param_name="wiki_page")
 
     def update_page(self, data=None):
+        """Update this page on Canvas.
+
+        Updates the stored data with the given data if it is non-None.
+        Then updates Canvas with the stored data. Returns self for chaining.
+        """
         return self.update(data)
