@@ -215,7 +215,7 @@ for question in questions.values():
                 blanks[answer['blank_id']].append(answer)
             question_text = question['question_text']
             for blank, answers in blanks.items():
-                dropdown = f'<pl-dropdown answers=name="{blank}">\n'
+                dropdown = f'<pl-dropdown answers-name="{blank}">\n'
                 for answer in answers:
                     dropdown += '  <pl-answer'
                     if answer['weight'] > 0: dropdown += ' correct="true"'
