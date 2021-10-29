@@ -200,19 +200,38 @@ for question in questions.values():
             template.write('<pl-question-panel>\n<p>\n')
             template.write(question['question_text'] + '\n')
             template.write('</p>\n</pl-question-panel>\n')
-            template.write('<markdown>\n|   |   |\n|---|---|\n')
+            template.write('<pl-matching answers-name="match">\n')
             for answer in question['answers']:
-                template.write(f'| {answer["text"]} | <pl-dropdown answers-name="answer{answer["id"]}">')
-                for match in question['matches']:
-                    template.write(f'<pl-answer')
-                    if match['match_id'] == answer['match_id']:
-                        template.write(f' correct="true"')
-                    template.write(f'>{match["text"]}</pl-answer>')
-                template.write('</pl-dropdown> |\n')
-            template.write('</markdown>\n')
+                template.write(f'  <pl-statement match="m{answer["match_id"]}">{answer["text"]}</pl-statement>\n');
+            for match in question['matches']:
+                template.write(f'  <pl-option name="m{match["match_id"]}">{match["text"]}</pl-option>\n');
+            template.write('</pl-matching>\n')
+
+        elif question['question_type'] == 'multiple_dropdowns_question':
+            blanks = {}
+            for answer in question['answers']:
+                if answer['blank_id'] not in blanks:
+                    blanks[answer['blank_id']] = []
+                blanks[answer['blank_id']].append(answer)
+            question_text = question['question_text']
+            for blank, answers in blanks.items():
+                dropdown = f'<pl-dropdown answers=name="{blank}">\n'
+                for answer in answers:
+                    dropdown += '  <pl-answer'
+                    if answer['weight'] > 0: dropdown += ' correct="true"'
+                    dropdown += f'>{answer["text"]}</pl-answer>\n'
+                dropdown += '</pl-dropdown>'
+                question_text = question_text.replace(f'[{blank}]', dropdown)
+            template.write('<pl-question-panel>\n<p>\n')
+            template.write(question_text + '\n')
+            template.write('</p>\n</pl-question-panel>\n')
 
         else:
             print('Unsupported question type: ' + question['question_type'])
+            template.write('<pl-question-panel>\n<p>\n')
+            template.write(question['question_text'] + '\n')
+            template.write('</p>\n</pl-question-panel>\n')
+            template.write(json.dumps(question, indent=4))
 
         if question['correct_comments'] or question['neutral_comments']:
             template.write('<pl-answer-panel>\n<p>\n')
